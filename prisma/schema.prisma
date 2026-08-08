@@ -1,0 +1,291 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USUARIOS Y AUTENTICACION
+// ============================================
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  firstName String?
+  lastName  String?
+  
+  // Credenciales encriptadas para GPS
+  gpsUsername    String
+  gpsPasswordHash String
+  
+  // Credenciales encriptadas para Empresa (La Segunda)
+  companyUsername    String
+  companyPasswordHash String
+  
+  // Config del vehículo
+  vehicleId       String?  // ID del vehículo en el GPS
+  vehicleModel    String?  // ej: "VW AMAROK CONFORTLINE V6"
+  
+  // Estado
+  isActive        Boolean  @default(true)
+  lastLogin       DateTime?
+  
+  // Auditoría
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relaciones
+  rendiciones     Rendicion[]
+  expenses        Expense[]
+  logs            AuditLog[]
+  whatsappSessions WhatsappSession[]
+  
+  @@index([email])
+}
+
+// ============================================
+// SESIONES WHATSAPP
+// ============================================
+
+model WhatsappSession {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Metadata de la sesión
+  phoneNumber     String?
+  isConnected     Boolean   @default(false)
+  lastActivityAt  DateTime  @default(now())
+  
+  // Datos de sesión (encriptado)
+  sessionData     String?   @db.Text // JSON encriptado
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@unique([userId])
+  @@index([userId])
+}
+
+// ============================================
+// RENDICIONES DE VIAJES
+// ============================================
+
+model Rendicion {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Datos del viaje
+  travelDate      DateTime
+  origin          String    // ej: "Buenos Aires"
+  originCode      String?   // ej: "TANDIL-B A-7000-0"
+  destination     String    // ej: "Tandil"
+  destinationCode String?   // ej: "TANDIL-B A-7000-0"
+  
+  // Datos GPS
+  kilometers      Decimal   @db.Decimal(10, 2)
+  gpsRetrievedAt  DateTime?
+  
+  // Vehículo usado
+  vehicleUsed     String    // ej: "VW AMAROK CONFORTLINE V6 2018 AC767UI"
+  
+  // Foto del recorrido (si la guarda)
+  photoPath       String?
+  
+  // Detalles del viaje
+  details         String?   @db.Text // Detalle de la gestión (opcional)
+  purpose         String?   // Propósito del viaje
+  
+  // Estado
+  status          RendicionStatus @default(PENDING)
+  // PENDING = No cargado
+  // LOADED = Cargado en sistema
+  // CONFIRMED = Usuario confirmó
+  // ERROR = Hubo error en carga
+  
+  renditionId     String?   // ID de la rendición en sistema empresa
+  loadedAt        DateTime? // Cuándo se cargó en sistema
+  confirmedAt     DateTime? // Cuándo usuario confirmó
+  
+  // Auditoría
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relaciones
+  expenses        Expense[]
+  logs            AuditLog[]
+  
+  @@index([userId])
+  @@index([travelDate])
+  @@index([status])
+}
+
+enum RendicionStatus {
+  PENDING
+  LOADED
+  CONFIRMED
+  ERROR
+}
+
+// ============================================
+// GASTOS (Combustible, Mantenimiento, etc)
+// ============================================
+
+model Expense {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  rendicionId     Int?
+  rendicion       Rendicion? @relation(fields: [rendicionId], references: [id], onDelete: Cascade)
+  
+  // Tipo de gasto
+  type            ExpenseType // COMBUSTIBLE, MANTENIMIENTO, PEAJE, etc
+  description     String    // ej: "Cambio de aceite"
+  
+  // Datos económicos
+  amount          Decimal   @db.Decimal(10, 2)
+  currency        String    @default("ARS")
+  
+  // Método de pago
+  paymentMethod   PaymentMethod // TARJETA, EFECTIVO, CHEQUE
+  paymentReference String?  // Número de tarjeta, cheque, etc
+  
+  // Documentación
+  receiptPath     String?   // Ruta a foto de recibo/factura
+  receiptNumber   String?   // Número de factura
+  receiptIssuer   String?   // Quién emitió (ej: estación de servicio)
+  
+  // OCR data
+  ocrExtractedAmount Decimal? @db.Decimal(10, 2)
+  ocrConfidence   Decimal?  @db.Decimal(3, 2) // 0.00 - 1.00
+  ocrManualReview Boolean   @default(false) // Si se requirió confirmación manual
+  
+  // Estado en carga
+  loadedToSystem  Boolean   @default(false)
+  systemReference String?   // Referencia en sistema empresa
+  
+  // Auditoría
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relaciones
+  logs            AuditLog[]
+  
+  @@index([userId])
+  @@index([rendicionId])
+  @@index([type])
+}
+
+enum ExpenseType {
+  COMBUSTIBLE     // Nafta/Diesel
+  MANTENIMIENTO   // Service, cambios, reparaciones
+  PEAJE           // Peajes de autopistas
+  ESTACIONAMIENTO // Estacionamientos
+  HOTELERIA       // Hoteles
+  COMIDA          // Alimentación
+  OTROS           // Otros gastos
+}
+
+enum PaymentMethod {
+  TARJETA
+  EFECTIVO
+  CHEQUE
+  TRANSFERENCIA
+}
+
+// ============================================
+// LOGS Y AUDITORÍA
+// ============================================
+
+model AuditLog {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  rendicionId     Int?
+  rendicion       Rendicion? @relation(fields: [rendicionId], references: [id], onDelete: Cascade)
+  
+  expenseId       Int?
+  expense         Expense?  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  
+  // Tipo de acción
+  action          String    // "GPS_EXTRACTED", "OCR_PROCESSED", "FORM_LOADED", "ERROR", etc
+  status          LogStatus // SUCCESS, WARNING, ERROR
+  
+  // Detalles
+  message         String    @db.Text
+  details         String?   @db.Text // JSON con detalles extra
+  errorMessage    String?   @db.Text
+  
+  // Source
+  source          String    // "whatsapp", "web", "api", "system"
+  userAgent       String?   // De dónde vino la acción
+  
+  // Auditoría
+  createdAt       DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([rendicionId])
+  @@index([action])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum LogStatus {
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+// ============================================
+// CONFIGURACIÓN DEL SISTEMA
+// ============================================
+
+model SystemConfig {
+  id              Int       @id @default(autoincrement())
+  
+  key             String    @unique
+  value           String    @db.Text
+  description     String?
+  
+  // Auditoría
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([key])
+}
+
+// ============================================
+// HISTORIAL DE CAMBIOS (Para auditoría)
+// ============================================
+
+model ChangeLog {
+  id              Int       @id @default(autoincrement())
+  
+  // Entidad que cambió
+  entityType      String    // "Rendicion", "Expense", "User"
+  entityId        Int
+  
+  // Qué cambió
+  fieldName       String
+  oldValue        String?   @db.Text
+  newValue        String?   @db.Text
+  
+  // Quién cambió
+  changedBy       Int?      // userId si fue un usuario
+  
+  // Auditoría
+  createdAt       DateTime  @default(now())
+  
+  @@index([entityType, entityId])
+  @@index([changedBy])
+  @@index([createdAt])
+}

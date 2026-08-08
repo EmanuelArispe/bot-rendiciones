@@ -1,0 +1,109 @@
+# ============================================
+# VARIABLES DE ENTORNO (NUNCA COMMITEAR!)
+# ============================================
+.env
+.env.local
+.env.*.local
+
+# ============================================
+# NODE Y NPM
+# ============================================
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============================================
+# PRISMA
+# ============================================
+prisma/dev.db
+prisma/dev.db-journal
+.prisma/
+
+# ============================================
+# DIRECTORIOS DE LA APLICACIÓN
+# ============================================
+# Sesiones de Baileys (contienen tokens)
+sessions/
+session.json
+
+# Fotos descargadas
+downloads/
+*.jpg
+*.jpeg
+*.png
+*.gif
+
+# Logs
+logs/
+*.log
+
+# Screenshots de errores
+screenshots/
+
+# ============================================
+# IDE Y EDITORES
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.env.swp
+*.sublime-workspace
+
+# WebStorm / IntelliJ
+*.iml
+.gradle
+.idea/
+out/
+*.orig
+
+# ============================================
+# ARCHIVOS TEMPORALES
+# ============================================
+.cache/
+.temp/
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# ============================================
+# SISTEMA OPERATIVO
+# ============================================
+.DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# ============================================
+# TESTING
+# ============================================
+coverage/
+.nyc_output/
+.mocha_output/
+
+# ============================================
+# BUILD
+# ============================================
+dist/
+build/
+
+# ============================================
+# CREDENCIALES ENCRIPTADAS (por seguridad)
+# ============================================
+*.key
+*.pem
+*.cert
+.ssl/
+
+# ============================================
+# COPIAS DE SEGURIDAD
+# ============================================
+*.sql.bak
+db.backup
+database.dump
