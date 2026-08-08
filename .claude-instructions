@@ -1,0 +1,295 @@
+# Bot de Rendición de Viaticos - Instrucciones para Claude
+
+## 🎯 VISIÓN DEL PROYECTO
+
+Bot WhatsApp que automatiza completamente la rendición de viaticos:
+- Usuario envía: fecha + localidad + foto factura
+- Bot extrae KMs del GPS automáticamente
+- Bot carga todo en formulario de empresa
+- Bot guarda histórico
+- Usuario verifica 1x/mes
+
+**Ahorro:** De 40min a 5min por rendición
+
+---
+
+## 🔄 FLUJO DEL BOT (End-to-End)
+
+```
+1️⃣  USUARIO ENVÍA POR WHATSAPP
+    "Viaje - 15/01 - Tandil - foto_factura.jpg"
+    
+2️⃣  BOT BAILEYS RECIBE
+    - Parsea: fecha, localidad, descarga foto
+    
+3️⃣  EXTRAE KMS DEL GPS (Puppeteer)
+    - Login: mapas.seguimientoglobal.com
+    - Extrae: "Distancia: software" → 147.07 km
+    
+4️⃣  EXTRAE MONTO DE FOTO (Tesseract OCR)
+    - Analiza imagen
+    - Retorna: $850
+    
+5️⃣  CARGA EN FORMULARIO EMPRESA (Puppeteer)
+    - Login: app.lasegunda.com.ar
+    - Navega: Netpro → Tasadores → Rendición
+    - Completa: Fechas, Origen, Destino, KM
+    - Agrega: Gasto de combustible
+    - Confirma gestión
+    
+6️⃣  GUARDA EN BD (PostgreSQL + Prisma)
+    
+7️⃣  RESPONDE EN WHATSAPP
+    "✅ Cargado: $850, 147.07km, Tandil - 15/01/2026"
+```
+
+---
+
+## 🏗️ ESTRUCTURA DEL PROYECTO
+
+```
+bot-rendiciones/
+├── .claude-instructions        # Este archivo
+├── .env                        # Variables de entorno (⚠️ NO commitear)
+├── CLAUDE.md                   # Documentación completa
+├── package.json                # Dependencias
+├── .gitignore
+├── prisma/
+│   ├── schema.prisma           # Schema BD (PostgreSQL)
+│   └── seed.js                 # Datos de prueba
+├── src/
+│   ├── index.js                # Entry point
+│   ├── config/
+│   │   ├── env.js              # Cargar variables
+│   │   └── constants.js        # Constantes
+│   ├── utils/
+│   │   ├── logger.js           # Winston logging
+│   │   └── error-handler.js    # Error handling
+│   ├── bot/
+│   │   ├── whatsapp.js         # Baileys - conexión WhatsApp
+│   │   └── message-parser.js   # Parser de mensajes
+│   ├── automation/
+│   │   ├── gps-scraper.js      # Puppeteer → GPS
+│   │   └── company-form.js     # Puppeteer → Formulario
+│   ├── ocr/
+│   │   └── invoice-parser.js   # Tesseract → Facturas
+│   └── db/
+│       └── prisma-client.js    # Cliente Prisma
+├── tests/
+├── downloads/                  # Fotos descargadas
+├── logs/                       # Archivos de log
+└── sessions/                   # Sesiones de Baileys
+```
+
+---
+
+## 📝 CONVENCIÓN DE COMMITS
+
+**Formato: Conventional Commits**
+
+```
+<type>(<scope>): <summary>
+
+<body (optional)>
+```
+
+**Types:** feat, fix, refactor, perf, test, docs, chore
+
+**Ejemplos:**
+```bash
+feat(whatsapp-bot): implement message parser
+fix(error-handler): catch undefined references
+refactor(logger): simplify winston configuration
+docs(setup): add postgresql installation guide
+chore(deps): update prisma to latest
+```
+
+**Reglas:**
+- Summary: max 72 caracteres, lowercase, sin punto
+- Scope: específico cuando sea posible
+- Body: solo si el "por qué" no es obvio
+- No incluir: Co-Authored-By, referencias a Claude
+
+---
+
+## 🛠️ STACK TECNOLÓGICO
+
+- **Node.js v22+**
+- **Baileys** - WhatsApp bot
+- **Puppeteer** - Automatización web (GPS + Formulario)
+- **Tesseract.js** - OCR (facturas)
+- **Prisma** - ORM + Migrations
+- **PostgreSQL** - Base de datos
+- **Winston** - Logging
+- **Express** - Framework (futuro)
+
+---
+
+## 📋 FASES DEL DESARROLLO
+
+### FASE 1: MVP Local - Bot Baileys ✅ (EN PROGRESO)
+- [ ] Bot Baileys funcional
+- [ ] Parser de mensajes
+- [ ] Logger y error handler
+- [ ] Testing básico
+
+### FASE 2: Automatización GPS
+- [ ] Puppeteer scraper GPS
+- [ ] Extracción de KMs
+- [ ] Validación de datos
+
+### FASE 3: OCR
+- [ ] Tesseract.js integrado
+- [ ] Extracción de montos
+- [ ] Validación de confianza
+
+### FASE 4: Automatización Formulario
+- [ ] Puppeteer formulario empresa
+- [ ] Llenado de campos
+- [ ] Confirmación de carga
+
+### FASE 5: Base de Datos
+- [ ] PostgreSQL setup
+- [ ] Prisma migrations
+- [ ] Histórico de rendiciones
+
+### FASE 6: Cloud + Multi-usuario
+- [ ] Railway deployment
+- [ ] Autenticación
+- [ ] Escalabilidad
+
+---
+
+## 🚀 COMANDOS PRINCIPALES
+
+```bash
+# Instalar
+npm install
+
+# Ejecutar bot
+npm start
+
+# Modo desarrollo (auto-restart)
+npm run dev
+
+# Logs
+tail -f logs/bot.log
+
+# Base de datos
+npx prisma migrate dev
+npx prisma studio
+
+# Tests
+npm test
+
+# Commits
+git add .
+git commit -m "type(scope): message"
+git push -u origin feature/...
+```
+
+---
+
+## 🎯 SKILLS PRINCIPALES (Módulos a desarrollar)
+
+### Skill 1: Parseo de Mensajes WhatsApp
+**Input:** "Viaje - 15/01 - Tandil - foto.jpg"  
+**Output:** { type, date, location, photo }  
+**Archivo:** `src/bot/message-parser.js`
+
+### Skill 2: Extracción de KMs desde GPS
+**Input:** Credenciales GPS + Fecha  
+**Output:** 147.07 km  
+**Archivo:** `src/automation/gps-scraper.js`
+
+### Skill 3: OCR de Facturas
+**Input:** Foto de factura  
+**Output:** { amount: 850, confidence: 0.95 }  
+**Archivo:** `src/ocr/invoice-parser.js`
+
+### Skill 4: Automatización de Formulario
+**Input:** Datos procesados  
+**Output:** { success: true, renditionId }  
+**Archivo:** `src/automation/company-form.js`
+
+### Skill 5: Base de Datos
+**Input:** Rendición completada  
+**Output:** Guardada en PostgreSQL  
+**Archivo:** `src/db/prisma-client.js`
+
+---
+
+## 📊 BASE DE DATOS (PostgreSQL + Prisma)
+
+**Tablas principales:**
+- `User` - Usuarios + credenciales
+- `Rendicion` - Viajes rendidos
+- `Expense` - Gastos (combustible, mantenimiento)
+- `AuditLog` - Logs de auditoría
+
+**Migraciones:**
+```bash
+npx prisma migrate dev --name init
+```
+
+---
+
+## 🔐 SEGURIDAD
+
+- ✅ Credenciales encriptadas con bcrypt
+- ✅ Variables de entorno en .env (no commitear)
+- ✅ Logs sin exponer datos sensibles
+- ✅ Sesiones de Baileys en carpeta ignorada
+
+---
+
+## 🐛 TROUBLESHOOTING
+
+| Problema | Solución |
+|----------|----------|
+| Baileys no conecta | Eliminar `sessions/`, reintentar |
+| Puppeteer timeout | Aumentar `PUPPETEER_TIMEOUT` en .env |
+| OCR no detecta | Verificar calidad de imagen |
+| DB error | `npx prisma migrate reset` |
+| Node deprecated | Actualizar: `nvm install latest` |
+
+---
+
+## 📞 NOTAS
+
+- **Estado:** Fase 1 - Baileys bot en desarrollo
+- **Última actualización:** 08/08/2026
+- **Rama actual:** feature/whatsapp-bot-setup
+- **Próximo paso:** Crear Bot Baileys funcional
+
+---
+
+## 🎓 CÓMO TRABAJAR CONMIGO EN CONSOLA
+
+Cuando hagas `claude` en terminal desde este proyecto:
+
+1. Voy a leer este archivo (`.claude-instructions`)
+2. Tendré contexto completo del flujo
+3. Puedo:
+   - Escribir código siguiendo convención
+   - Hacer commits correctos
+   - Mantener estructura del proyecto
+   - Respetar reglas de seguridad
+
+4. Ejemplo en consola:
+```bash
+cd D:\proyect\bot-rendiciones
+claude
+> Write a function to parse whatsapp messages with date, location, and photo
+```
+
+Yo entenderé el contexto y crearé el código acorde a:
+- ✅ Estructura del proyecto
+- ✅ Flujo del bot
+- ✅ Convención de commits
+- ✅ Stack tecnológico
+- ✅ Reglas de seguridad
+
+---
+
+**Happy coding! 🚀**
