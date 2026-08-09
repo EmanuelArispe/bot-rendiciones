@@ -24,9 +24,12 @@ prisma/dev.db-journal
 # ============================================
 # DIRECTORIOS DE LA APLICACIÓN
 # ============================================
-# Sesiones de Baileys (contienen tokens)
+# Sesiones de whatsapp-web.js (contienen tokens)
 sessions/
 session.json
+
+# Caché runtime de whatsapp-web.js
+.wwebjs_cache/
 
 # Fotos descargadas
 downloads/
