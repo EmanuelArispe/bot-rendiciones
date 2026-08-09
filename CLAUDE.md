@@ -2,9 +2,9 @@
 
 **Proyecto:** Automatización de rendición de viaticos y gastos de mantenimiento vehicular  
 **Autor:** Emanuel Perez  
-**Stack:** Node.js + Baileys + Puppeteer + Tesseract.js + PostgreSQL  
+**Stack:** Node.js + whatsapp-web.js + Puppeteer + Tesseract.js + PostgreSQL  
 **Estado:** Fase 1 - MVP Local  
-**Última actualización:** 08/08/2026
+**Última actualización:** 09/08/2026
 
 ---
 
@@ -69,7 +69,8 @@ Bot WhatsApp que automatiza completamente la rendición de viaticos:
 
 ### Automatización Web
 - **Puppeteer** - Control de navegador (GPS + Formulario)
-- **Baileys** - Cliente WhatsApp
+- **whatsapp-web.js** - Cliente WhatsApp (usa Puppeteer internamente para controlar WhatsApp Web)
+- **qrcode / qrcode-terminal** - Generación del QR de vinculación (terminal + archivo `qr.png`)
 - **Tesseract.js** - OCR (extrae montos)
 
 ### Base de Datos
@@ -92,7 +93,7 @@ Bot WhatsApp que automatiza completamente la rendición de viaticos:
 bot-rendiciones/
 ├── src/
 │   ├── bot/
-│   │   ├── whatsapp.js          # Baileys - conexión WhatsApp
+│   │   ├── whatsapp.js          # whatsapp-web.js - conexión WhatsApp
 │   │   ├── message-parser.js    # Parsea: fecha, localidad, foto
 │   │   └── response-handler.js  # Responde al usuario
 │   │
@@ -137,7 +138,8 @@ bot-rendiciones/
 │   ├── USER_GUIDE.md            # Guía para usuarios
 │   └── TROUBLESHOOTING.md       # Solución de problemas
 │
-├── sessions/                    # Datos de sesión Baileys
+├── sessions/                    # Datos de sesión whatsapp-web.js (LocalAuth)
+├── qr.png                       # QR de vinculación generado en cada login
 ├── downloads/                   # Fotos descargadas
 ├── logs/                        # Archivos de log
 │
@@ -395,7 +397,7 @@ ls prisma/migrations/
 | Tabla | Propósito |
 |-------|-----------|
 | `User` | Usuarios, credenciales GPS/Empresa |
-| `WhatsappSession` | Sesiones de Baileys |
+| `WhatsappSession` | Sesiones de whatsapp-web.js |
 | `Rendicion` | Viajes rendidos |
 | `Expense` | Gastos (combustible, mantenimiento, etc) |
 | `AuditLog` | Logs de auditoría |
@@ -407,8 +409,8 @@ ls prisma/migrations/
 ## 🔑 VARIABLES DE ENTORNO (.env)
 
 ```
-# WhatsApp Baileys
-BAILEYS_SESSION_ID=default
+# WhatsApp (whatsapp-web.js)
+BAILEYS_SESSION_ID=default   # nombre legacy de la var; ver src/config/env.js
 
 # Base de datos
 DB_TYPE=sqlite
@@ -554,7 +556,7 @@ git status         # Confirmar archivos
 ### Ejemplos ✅
 
 ```bash
-feat(baileys-bot): implement message parser
+feat(whatsapp-bot): implement message parser
 fix(puppeteer): wait for gps page load
 refactor(db): simplify user queries with prisma
 perf(ocr): reduce memory usage in image processing
@@ -606,7 +608,7 @@ chore(prisma): add new migration for audit logs
 ## 🚀 FASES DEL DESARROLLO
 
 ### FASE 1: MVP Local (4-6 semanas)
-- [ ] Setup Node + Baileys
+- [x] Setup Node + whatsapp-web.js
 - [ ] Bot recibe mensajes WhatsApp
 - [ ] Parser de mensajes
 - [ ] Puppeteer → GPS scraper
@@ -637,7 +639,8 @@ chore(prisma): add new migration for audit logs
 
 | Problema | Solución |
 |----------|----------|
-| Baileys no se conecta | Eliminar carpeta `sessions/`, reintentar |
+| Bot no se conecta / QR no aparece | Eliminar carpeta `sessions/`, reintentar (revisar también `qr.png` generado) |
+| QR expira antes de escanear | Reintentar; el QR de whatsapp-web.js expira a los ~60s |
 | Puppeteer timeout | Aumentar PUPPETEER_TIMEOUT en .env |
 | OCR no detecta monto | Mejorar calidad foto, revisar idioma |
 | Formulario no se carga | Verificar credenciales, revisar logs |
@@ -656,7 +659,7 @@ chore(prisma): add new migration for audit logs
 - **Desarrollador:** Emanuel Perez
 - **Empresa:** La Segunda (rendición de viaticos)
 - **Estado Actual:** Iniciando desarrollo
-- **Próximo paso:** Setup y primer módulo de Baileys
+- **Próximo paso:** Implementar lógica de procesamiento de rendiciones (GPS scraper + OCR + formulario empresa)
 
 ---
 

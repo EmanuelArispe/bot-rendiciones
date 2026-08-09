@@ -1,15 +1,13 @@
 /**
- * Bot de WhatsApp usando Baileys
+ * Bot de WhatsApp usando whatsapp-web.js
  * Escucha mensajes y dispara procesamiento de rendiciones
  */
 
-import makeWASocket, {
-  useMultiFileAuthState,
-  DisconnectReason,
-  isJidBroadcast,
-} from 'baileys'
-import { Boom } from '@hapi/boom'
-import pino from 'pino'
+import pkg from 'whatsapp-web.js'
+const { Client, LocalAuth, MessageMedia } = pkg
+import qrcode from 'qrcode'
+import QrcodeTerminal from 'qrcode-terminal'
+import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import logger from '../utils/logger.js'
@@ -20,74 +18,121 @@ import { MESSAGES } from '../config/constants.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Estado global del bot
-let sock = null
+let client = null
 let isConnected = false
 
 /**
- * Inicializa bot Baileys
+ * Inicializa bot con whatsapp-web.js
  */
 export async function initializeWhatsAppBot() {
   try {
     const sessionsDir = path.join(process.cwd(), process.env.SESSIONS_DIR || 'sessions')
 
-    logger.info('🔐 Autenticando con WhatsApp...')
+    logger.info('🔐 Inicializando WhatsApp Web Bot...')
 
-    // Cargar autenticación
-    const { state, saveCreds } = await useMultiFileAuthState(sessionsDir)
-
-    // Crear socket
-    sock = makeWASocket({
-      auth: state,
-      printQRInTerminal: true,
-      logger: pino({ level: process.env.DEBUG === 'true' ? 'debug' : 'error' }),
-      shouldIgnoreJid: (jid) => isJidBroadcast(jid),
-      browser: ['Bot Rendiciones', 'Chrome', '120.0'],
-      version: [2, 2407, 4],
+    // Crear cliente
+    client = new Client({
+      authStrategy: new LocalAuth({
+        clientId: 'bot-rendiciones',
+        dataPath: sessionsDir,
+      }),
+      puppeteer: {
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+        ],
+      },
     })
 
-    // Guardar credenciales después de cada cambio
-    sock.ev.on('creds.update', saveCreds)
+    // Evento: QR necesario
+    client.on('qr', (qr) => {
+      logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      logger.info('📱 NUEVO QR CODE - Escanea con WhatsApp')
+      logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
-    // Manejo de conexión
-    sock.ev.on('connection.update', async (update) => {
-      const { connection, lastDisconnect, qr } = update
-
-      if (qr) {
-        logger.info('📱 Escanea el código QR en tu terminal para conectar WhatsApp')
+      // Mostrar en terminal
+      try {
+        QrcodeTerminal.generate(qr, { small: true })
+      } catch (e) {
+        logger.debug('Error mostrando QR en terminal:', e.message)
       }
 
-      if (connection === 'connecting') {
-        logger.info('⏳ Conectando a WhatsApp...')
+      // Guardar QR en archivo
+      try {
+        qrcode.toFile(
+          path.join(process.cwd(), 'qr.png'),
+          qr,
+          { width: 300 },
+          (err) => {
+            if (!err) {
+              logger.info('📄 QR guardado en: qr.png')
+            }
+          }
+        )
+      } catch (e) {
+        logger.debug('Error guardando QR a archivo:', e.message)
       }
 
-      if (connection === 'open') {
-        isConnected = true
-        logger.info('✅ Bot conectado a WhatsApp exitosamente!')
-        logger.info(`📱 ID: ${sock.user.id}`)
-      }
+      logger.info('⏳ Esperando que escanees el código con tu teléfono...')
+      logger.info('⏱️ Tienes 60 segundos antes de que expire')
+      logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
+    })
 
-      if (connection === 'close') {
-        isConnected = false
+    // Evento: Cliente listo
+    client.on('ready', () => {
+      isConnected = true
+      logger.info('✅ ¡Bot conectado exitosamente a WhatsApp!')
+      logger.info(`📱 Número: ${client.info.wid.user}`)
+      logger.info(`👤 Nombre: ${client.info.pushname}`)
+      logger.info('🤖 Bot listo para recibir mensajes')
+      logger.info('⏳ Escuchando nuevos mensajes...\n')
+    })
 
-        if (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut) {
-          // Reconectar automáticamente
-          logger.warn('⚠️ Conexión perdida, reintentando...')
-          setTimeout(initializeWhatsAppBot, 3000)
-        } else {
-          logger.error('❌ Sesión cerrada. Por favor, escanea el QR nuevamente.')
-        }
+    // Evento: Nuevo mensaje
+    client.on('message', async (message) => {
+      try {
+        await handleNewMessage(message)
+      } catch (error) {
+        logger.error('Error procesando mensaje:', error)
       }
     })
 
-    // Escuchar mensajes
-    sock.ev.on('messages.upsert', handleNewMessages)
-
-    // Manejo de errores
-    sock.ev.on('error', (error) => {
-      logger.error('❌ Error en socket:', error)
+    // Evento: Mensaje de autenticación
+    client.on('authenticated', () => {
+      logger.info('✅ Autenticación completada')
     })
 
-    logger.info('🤖 Bot de WhatsApp inicializado correctamente')
+    // Evento: Autenticación fallida
+    client.on('auth_failure', (msg) => {
+      logger.error('❌ Fallo de autenticación:', msg)
+      isConnected = false
+    })
+
+    // Evento: Desconexión
+    client.on('disconnected', (reason) => {
+      isConnected = false
+      logger.warn(`⚠️ Bot desconectado: ${reason}`)
+      logger.info('📝 Reconectando en 10 segundos...')
+
+      // Reintentar conexión
+      setTimeout(() => {
+        logger.info('🔄 Reintentando conexión...')
+        client.initialize()
+      }, 10000)
+    })
+
+    // Evento: Error
+    client.on('error', (error) => {
+      logger.error('❌ Error en cliente:', error)
+    })
+
+    // Iniciar cliente
+    logger.info('🔄 Iniciando cliente de WhatsApp...')
+    await client.initialize()
+
+    logger.info('✅ Bot de WhatsApp inicializado correctamente')
   } catch (error) {
     const appError = handleWhatsAppError(error)
     logAppError(appError)
@@ -96,114 +141,97 @@ export async function initializeWhatsAppBot() {
 }
 
 /**
- * Maneja nuevos mensajes
+ * Maneja un nuevo mensaje
  */
-async function handleNewMessages({ messages, type }) {
+async function handleNewMessage(message) {
   try {
-    if (type !== 'notify') return
-
-    for (const message of messages) {
-      // Ignorar si no tiene contenido
-      if (!message.message) continue
-
-      // Ignorar transmisiones
-      if (message.key.remoteJid === 'status@broadcast') continue
-
-      // Ignorar si es del bot
-      if (message.key.fromMe) continue
-
-      logger.logWhatsApp('NEW_MESSAGE', message.key.remoteJid, {
-        type: message.message.conversation ? 'text' : 'media',
-      })
-
-      // Procesar mensaje
-      await processMessage(message)
-    }
-  } catch (error) {
-    logger.error('Error procesando mensajes:', error)
-  }
-}
-
-/**
- * Procesa un mensaje individual
- */
-async function processMessage(message) {
-  try {
-    const from = message.key.remoteJid
-    const messageId = message.key.id
-    const timestamp = message.messageTimestamp
-
-    // Extraer texto del mensaje
-    let messageText = ''
-    if (message.message?.conversation) {
-      messageText = message.message.conversation
-    } else if (message.message?.extendedTextMessage?.text) {
-      messageText = message.message.extendedTextMessage.text
-    }
-
-    logger.debug(`Mensaje recibido: "${messageText}"`)
-
-    // Comando: "help" o "ayuda"
-    if (/^(help|ayuda|\?)$/i.test(messageText)) {
-      await sendHelp(from)
+    // Ignorar mensajes del grupo (por ahora)
+    if (message.from.includes('@g.us')) {
+      logger.debug('Ignorando mensaje de grupo')
       return
     }
 
-    // Comando: "status" o "estado"
-    if (/^(status|estado)$/i.test(messageText)) {
-      await sendStatus(from)
+    // Ignorar si es del bot
+    if (message.fromMe) {
+      logger.debug('Ignorando mensaje propio')
+      return
+    }
+
+    const from = message.from
+    const phoneNumber = from.split('@')[0]
+
+    logger.logWhatsApp('NEW_MESSAGE', phoneNumber, {
+      type: message.type,
+      hasMedia: message.hasMedia,
+      text: message.body.substring(0, 50),
+    })
+
+    // Comando: help
+    if (/^(help|ayuda|\?)$/i.test(message.body)) {
+      await sendHelp(message)
+      return
+    }
+
+    // Comando: status
+    if (/^(status|estado)$/i.test(message.body)) {
+      await sendStatus(message)
       return
     }
 
     // Parsear mensaje de rendición
-    const parsedMessage = parseWhatsAppMessage(messageText, message)
+    const messageObj = {
+      key: { remoteJid: from, id: message.id, fromMe: false },
+      message: { conversation: message.body },
+      messageTimestamp: Math.floor(Date.now() / 1000),
+    }
+
+    const parsedMessage = parseWhatsAppMessage(message.body, messageObj)
 
     if (parsedMessage.success) {
       logger.info('✅ Mensaje parseado correctamente', parsedMessage.data)
 
-      // Enviar confirmación de recepción
-      await sendMessage(
-        from,
-        MESSAGES.SUCCESS.PROCESSING
-      )
+      // Enviar confirmación
+      await sendMessage(message, MESSAGES.SUCCESS.PROCESSING)
 
-      // TODO: Aquí irá la lógica de procesamiento de rendición
+      // TODO: Aquí irá la lógica de procesamiento
       // - Extraer KMs del GPS
       // - OCR de factura
       // - Cargar en formulario empresa
       // - Guardar en BD
-      // - Enviar confirmación
 
       logger.info('⏳ Procesamiento de rendición pendiente de implementar')
     } else {
-      // Mensaje inválido
-      logger.warn('❌ Formato de mensaje inválido', {
-        message: messageText,
+      logger.warn('❌ Formato inválido', {
+        message: message.body,
         errors: parsedMessage.errors,
       })
 
-      await sendMessage(from, MESSAGES.ERROR.INVALID_FORMAT)
+      await sendMessage(message, MESSAGES.ERROR.INVALID_FORMAT)
     }
   } catch (error) {
-    logger.error('Error procesando mensaje individual:', error)
-    const from = message.key.remoteJid
-    await sendMessage(from, MESSAGES.ERROR.GENERIC)
+    logger.error('Error procesando mensaje:', error)
+    await sendMessage(message, MESSAGES.ERROR.GENERIC)
   }
 }
 
 /**
  * Envía un mensaje de texto
  */
-export async function sendMessage(to, text) {
+export async function sendMessage(messageOrTo, text) {
   try {
-    if (!sock || !isConnected) {
+    if (!client || !isConnected) {
       throw new Error('Bot no está conectado')
     }
 
-    await sock.sendMessage(to, { text })
-    logger.debug(`Mensaje enviado a ${to}: ${text}`)
+    let to = messageOrTo
+    if (messageOrTo.from) {
+      to = messageOrTo.from
+    }
+
+    await client.sendMessage(to, text)
+    logger.debug(`Mensaje enviado a ${to}`)
   } catch (error) {
-    const appError = handleWhatsAppError(error, { to, text })
+    const appError = handleWhatsAppError(error, { to: messageOrTo })
     logAppError(appError)
   }
 }
@@ -211,10 +239,10 @@ export async function sendMessage(to, text) {
 /**
  * Envía mensaje de ayuda
  */
-async function sendHelp(from) {
+async function sendHelp(message) {
   const helpText = `🤖 *Bot de Rendición de Viaticos*
 
-*Cómo usarme:*
+*¿Cómo usarme?*
 
 1️⃣ *Rendir un viaje:*
    Viaje - DD/MM - Localidad - [foto factura]
@@ -231,41 +259,40 @@ async function sendHelp(from) {
 *Comandos:*
 - help / ayuda - Ver esta ayuda
 - status / estado - Ver estado actual
-- ver rendiciones - Ver historial
 
 *¿Dudas?* 
 Escribí "status" para ver estado actual.`
 
-  await sendMessage(from, helpText)
+  await sendMessage(message, helpText)
 }
 
 /**
  * Envía estado del bot
  */
-async function sendStatus(from) {
+async function sendStatus(message) {
   const statusText = `✅ *Estado del Bot*
 
 Estado: ${isConnected ? '🟢 Conectado' : '🔴 Desconectado'}
-Sesión: ${sock?.user?.name || 'No inicializada'}
+Sesión: ${client?.info?.wid?.user || 'No inicializada'}
 
-Estoy listo para procesar tus rendiciones. 
+Estoy listo para procesar tus rendiciones.
 ¿Necesitas ayuda? Escribe "help"`
 
-  await sendMessage(from, statusText)
+  await sendMessage(message, statusText)
 }
 
 /**
  * Obtiene el estado de conexión
  */
 export function isWhatsAppConnected() {
-  return isConnected && sock !== null
+  return isConnected && client !== null
 }
 
 /**
- * Obtiene datos del usuario
+ * Obtiene datos del usuario del bot
  */
 export function getBotUser() {
-  return sock?.user || null
+  return client?.info?.wid || null
 }
 
 /**
@@ -273,9 +300,10 @@ export function getBotUser() {
  */
 export async function disconnectBot() {
   try {
-    if (sock) {
-      await sock.logout()
-      sock = null
+    if (client) {
+      await client.logout()
+      await client.destroy()
+      client = null
       isConnected = false
       logger.info('✅ Bot desconectado correctamente')
     }
