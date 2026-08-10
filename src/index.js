@@ -9,15 +9,17 @@
  * 4. Escucha mensajes de WhatsApp
  */
 
-import 'dotenv/config'
+import { config } from 'dotenv'
 import { fileURLToPath } from 'url'
-import { dirname } from 'path'
+import { dirname, resolve } from 'path'
 import logger from './utils/logger.js'
 import { loadEnv } from './config/env.js'
 import { initializeWhatsAppBot } from './bot/whatsapp.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+
+config({ path: resolve(__dirname, '../env/.env') })
 
 /**
  * Inicializa la aplicación
