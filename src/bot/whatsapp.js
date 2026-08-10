@@ -14,6 +14,7 @@ import logger from '../utils/logger.js'
 import { parseWhatsAppMessage } from './message-parser.js'
 import { handleWhatsAppError, logAppError } from '../utils/error-handler.js'
 import { MESSAGES } from '../config/constants.js'
+import { handleSetupCredentialsCommand } from './credential-manager.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -178,6 +179,12 @@ async function handleNewMessage(message) {
       return
     }
 
+    // Comando: setup-credentials
+    if (/^setup-credentials$/i.test(message.body)) {
+      await handleSetupCredentialsCommand(message)
+      return
+    }
+
     // Parsear mensaje de rendición
     const messageObj = {
       key: { remoteJid: from, id: message.id, fromMe: false },
@@ -259,6 +266,7 @@ async function sendHelp(message) {
 *Comandos:*
 - help / ayuda - Ver esta ayuda
 - status / estado - Ver estado actual
+- setup-credentials - Configurar/actualizar tus credenciales de GPS y Empresa
 
 *¿Dudas?* 
 Escribí "status" para ver estado actual.`
