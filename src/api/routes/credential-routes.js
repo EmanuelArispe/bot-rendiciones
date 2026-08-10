@@ -8,6 +8,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { validateSetupToken, saveCredentials } from '../../services/credential-service.js'
 import { validateCredentialsAgainstAPIs } from '../../utils/credential-validator.js'
+import { sendMessage } from '../../bot/whatsapp.js'
 import logger from '../../utils/logger.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -97,6 +98,11 @@ router.post('/setup/validate', async (req, res) => {
       companyUsername,
       companyPassword,
     })
+
+    await sendMessage(
+      `${session.phoneNumber}@c.us`,
+      `✅ Tus credenciales quedaron guardadas y validadas\n\nYa podés usar el bot para rendir viajes.`
+    )
 
     res
       .type('html')
