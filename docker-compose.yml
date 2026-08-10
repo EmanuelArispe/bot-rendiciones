@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bot-rendiciones-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bot_user
+      POSTGRES_PASSWORD: secure_password_123
+      POSTGRES_DB: bot_rendiciones
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bot-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bot_user -d bot_rendiciones"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  bot-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: bot-rendiciones-postgres-data
