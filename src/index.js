@@ -15,6 +15,7 @@ import { dirname, resolve } from 'path'
 import logger from './utils/logger.js'
 import { loadEnv } from './config/env.js'
 import { initializeWhatsAppBot } from './bot/whatsapp.js'
+import { startServer } from './api/server.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -44,7 +45,11 @@ async function main() {
 
     logger.info('✅ Configuración validada')
 
-    // 3. Inicializar bot Baileys
+    // 3. Iniciar servidor HTTP (formulario de setup de credenciales)
+    logger.info('🌐 Iniciando servidor HTTP...')
+    await startServer(process.env.PORT || 3000)
+
+    // 4. Inicializar bot Baileys
     logger.info('🤖 Inicializando bot de WhatsApp...')
     await initializeWhatsAppBot()
 

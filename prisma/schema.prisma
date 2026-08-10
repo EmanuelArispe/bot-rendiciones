@@ -19,15 +19,7 @@ model User {
   email     String    @unique
   firstName String?
   lastName  String?
-  
-  // Credenciales encriptadas para GPS
-  gpsUsername    String
-  gpsPasswordHash String
-  
-  // Credenciales encriptadas para Empresa (La Segunda)
-  companyUsername    String
-  companyPasswordHash String
-  
+
   // Config del vehículo
   vehicleId       String?  // ID del vehículo en el GPS
   vehicleModel    String?  // ej: "VW AMAROK CONFORTLINE V6"
@@ -44,33 +36,86 @@ model User {
   rendiciones     Rendicion[]
   expenses        Expense[]
   logs            AuditLog[]
-  whatsappSessions WhatsappSession[]
-  
+  whatsappConnections WhatsappConnection[]
+
   @@index([email])
 }
 
 // ============================================
-// SESIONES WHATSAPP
+// CONEXIONES WHATSAPP (whatsapp-web.js / LocalAuth)
 // ============================================
 
-model WhatsappSession {
+model WhatsappConnection {
   id              Int       @id @default(autoincrement())
   userId          Int
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   // Metadata de la sesión
   phoneNumber     String?
   isConnected     Boolean   @default(false)
   lastActivityAt  DateTime  @default(now())
-  
+
   // Datos de sesión (encriptado)
   sessionData     String?   @db.Text // JSON encriptado
-  
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  
+
   @@unique([userId])
   @@index([userId])
+}
+
+// ============================================
+// CREDENCIALES DE USUARIO (GPS + Empresa)
+// ============================================
+// Identificadas por número de WhatsApp: el flujo de setup ("setup-credentials")
+// corre antes de que exista cualquier vínculo con la tabla User.
+
+model WhatsappSession {
+  id              Int       @id @default(autoincrement())
+  phoneNumber     String    @unique
+
+  // Credenciales GPS (cifradas con AES-256-GCM, no bcrypt: deben poder
+  // recuperarse en texto plano para loguear vía Puppeteer)
+  gpsUsername           String?
+  gpsPasswordEncrypted  String?
+
+  // Credenciales Empresa (La Segunda)
+  companyUsername           String?
+  companyPasswordEncrypted  String?
+
+  credentialsStatus      CredentialStatus @default(SETUP_PENDING)
+  lastValidationSuccess  DateTime?        // Última vez que las credenciales funcionaron
+
+  // Token de configuración (válido 15 minutos)
+  setupToken           String?   @unique
+  setupTokenExpiresAt  DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  usageLogs       CredentialUsageLog[]
+
+  @@index([phoneNumber])
+}
+
+enum CredentialStatus {
+  SETUP_PENDING
+  ACTIVE
+  INVALID_CREDENTIALS
+}
+
+model CredentialUsageLog {
+  id              Int       @id @default(autoincrement())
+  phoneNumber     String
+  session         WhatsappSession @relation(fields: [phoneNumber], references: [phoneNumber])
+
+  service         String    // "GPS", "FORM"
+  success         Boolean
+  errorMessage    String?
+  timestamp       DateTime  @default(now())
+
+  @@index([phoneNumber, service])
 }
 
 // ============================================

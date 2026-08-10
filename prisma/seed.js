@@ -1,7 +1,9 @@
 import { PrismaClient } from '@prisma/client'
-import bcrypt from 'bcrypt'
+import { encrypt } from '../src/utils/crypto.js'
 
 const prisma = new PrismaClient()
+
+const SEED_PHONE_NUMBER = '5491111111111'
 
 async function main() {
   console.log('🌱 Iniciando seed de datos...')
@@ -10,22 +12,16 @@ async function main() {
   // await prisma.auditLog.deleteMany({})
   // await prisma.expense.deleteMany({})
   // await prisma.rendicion.deleteMany({})
+  // await prisma.credentialUsageLog.deleteMany({})
   // await prisma.whatsappSession.deleteMany({})
   // await prisma.user.deleteMany({})
 
   // Crear usuario de prueba
-  const hashedGpsPassword = await bcrypt.hash('gps_password_123', 10)
-  const hashedCompanyPassword = await bcrypt.hash('company_password_123', 10)
-
   const user = await prisma.user.create({
     data: {
       email: 'emanuel@example.com',
       firstName: 'Emanuel',
       lastName: 'Perez',
-      gpsUsername: 'emanuelprueba',
-      gpsPasswordHash: hashedGpsPassword,
-      companyUsername: 'eperez',
-      companyPasswordHash: hashedCompanyPassword,
       vehicleId: 'AC767UI',
       vehicleModel: 'VW AMAROK CONFORTLINE V6 2018',
       isActive: true,
@@ -33,6 +29,23 @@ async function main() {
   })
 
   console.log('✅ Usuario creado:', user.email)
+
+  // Credenciales de prueba (GPS/Empresa), como si hubiera completado setup-credentials
+  const whatsappSession = await prisma.whatsappSession.upsert({
+    where: { phoneNumber: SEED_PHONE_NUMBER },
+    update: {},
+    create: {
+      phoneNumber: SEED_PHONE_NUMBER,
+      gpsUsername: 'emanuelprueba',
+      gpsPasswordEncrypted: encrypt('gps_password_123'),
+      companyUsername: 'eperez',
+      companyPasswordEncrypted: encrypt('company_password_123'),
+      credentialsStatus: 'ACTIVE',
+      lastValidationSuccess: new Date(),
+    },
+  })
+
+  console.log('✅ WhatsappSession (credenciales) creada:', whatsappSession.phoneNumber)
 
   // Crear una rendición de prueba
   const rendicion = await prisma.rendicion.create({
@@ -113,9 +126,10 @@ async function main() {
   console.log(`   - Logs: 1`)
   console.log('\n💡 Credentials de prueba:')
   console.log(`   Email: ${user.email}`)
-  console.log(`   GPS Username: ${user.gpsUsername}`)
-  console.log(`   Company Username: ${user.companyUsername}`)
-  console.log('\n⚠️  Nota: Las contraseñas están hasheadas. Usa resetDatabase si necesitas cambiarlas.')
+  console.log(`   Teléfono (WhatsappSession): ${whatsappSession.phoneNumber}`)
+  console.log(`   GPS Username: ${whatsappSession.gpsUsername}`)
+  console.log(`   Company Username: ${whatsappSession.companyUsername}`)
+  console.log('\n⚠️  Nota: Las contraseñas están cifradas (AES-256-GCM), no en texto plano.')
 }
 
 main()
