@@ -48,6 +48,7 @@ export async function getCredentialsForBot(phoneNumber) {
 /**
  * Se llama cuando GPS/Form fallan al USAR credenciales guardadas (no en el setup)
  * Registra el error, marca las credenciales como inválidas y avisa al usuario
+ * @param {string} service - 'GPS' | 'FORM' (enum CredentialUsageService)
  */
 export async function handleCredentialFailure(phoneNumber, service, errorMessage) {
   const cleanPhone = normalizePhoneNumber(phoneNumber)

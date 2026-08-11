@@ -9,7 +9,11 @@
 export const EXTERNAL_URLS = {
   GPS_LOGIN: 'https://mapas.seguimientoglobal.com/login',
   GPS_MAP: 'https://mapas.seguimientoglobal.com/mapa/google',
-  COMPANY_LOGIN: 'https://app.lasegunda.com.ar',
+  // Redirige sola a un login de Keycloak (SSO) con state/nonce/code_challenge
+  // nuevos en cada visita — no hardcodear una URL de auth ya generada.
+  COMPANY_LOGIN: 'https://hubproductores.papps.lasegunda.com.ar/',
+  // ⚠️ Pendiente de re-verificar: la migración a SSO probablemente cambió
+  // también las rutas post-login (Netpro → Tasadores → Rendición de Gastos).
   COMPANY_RENDICION: 'https://app.lasegunda.com.ar/RIND_GASTOS/TopRendicion',
 }
 
@@ -17,11 +21,11 @@ export const EXTERNAL_URLS = {
 // SELECTORES DE PUPPETEER
 // ============================================
 export const SELECTORS = {
-  // GPS
+  // GPS (mapas.seguimientoglobal.com/login - verificado contra el DOM real)
   GPS: {
-    LOGIN_USER: 'input[name="username"]',
-    LOGIN_PASSWORD: 'input[name="password"]',
-    LOGIN_BUTTON: 'button[type="submit"]',
+    LOGIN_USER: 'input[name="nick"]',
+    LOGIN_PASSWORD: 'input[name="passwd"]',
+    LOGIN_BUTTON: '#in',
     VEHICLE_LIST: '.vehicle-list',
     VEHICLE_ITEM: '.vehicle-item',
     DATE_FROM: 'input[name="dateFrom"]',
@@ -31,12 +35,12 @@ export const SELECTORS = {
     KM_VALUE: '.distance-value',
   },
 
-  // EMPRESA (La Segunda)
+  // EMPRESA (La Segunda) - login vía SSO Keycloak, verificado contra el DOM real
   COMPANY: {
-    LOGIN_USER: 'input#Usuario',
-    LOGIN_PASSWORD: 'input#Contraseña',
-    LOGIN_COUNTRY: 'select[name="pais"]',
-    LOGIN_BUTTON: 'button[type="submit"]',
+    LOGIN_USER: 'input[name="username"]',
+    LOGIN_PASSWORD: 'input[name="password"]',
+    LOGIN_BUTTON: '#kc-login-normal',
+    // ⚠️ Sin verificar (asumen el portal viejo app.lasegunda.com.ar, previo a SSO)
     NETPRO_BUTTON: 'a:contains("NetPro")',
     MENU_TOGGLE: 'button.menu-toggle',
     TASADORES_OPTION: 'a:contains("Tasadores")',

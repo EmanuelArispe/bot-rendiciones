@@ -56,7 +56,7 @@ export async function validateGPS(username, password) {
 }
 
 /**
- * Intenta un login real contra app.lasegunda.com.ar
+ * Intenta un login real contra el SSO de la empresa (Keycloak, hubproductores.papps.lasegunda.com.ar)
  */
 export async function validateCompany(username, password) {
   const browser = await launchBrowser()
@@ -71,18 +71,6 @@ export async function validateCompany(username, password) {
     await page.waitForSelector(SELECTORS.COMPANY.LOGIN_USER, { timeout: TIMEOUTS.PUPPETEER_WAIT })
     await page.type(SELECTORS.COMPANY.LOGIN_USER, username)
     await page.type(SELECTORS.COMPANY.LOGIN_PASSWORD, password)
-
-    // El value del <option> de país no se conoce de antemano: se busca por texto
-    const countrySelect = await page.$(SELECTORS.COMPANY.LOGIN_COUNTRY)
-    if (countrySelect) {
-      const argentinaValue = await page.$$eval(
-        `${SELECTORS.COMPANY.LOGIN_COUNTRY} option`,
-        (options) => options.find((o) => /argentina/i.test(o.textContent))?.value
-      )
-      if (argentinaValue) {
-        await page.select(SELECTORS.COMPANY.LOGIN_COUNTRY, argentinaValue)
-      }
-    }
 
     await Promise.all([
       page

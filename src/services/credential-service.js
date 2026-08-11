@@ -9,6 +9,7 @@ import logger from '../utils/logger.js'
 import { encrypt, decrypt } from '../utils/crypto.js'
 import { DatabaseError, ValidationError } from '../utils/error-handler.js'
 import { getConfig } from '../config/env.js'
+import { getOrCreateUserByPhoneNumber } from './user-service.js'
 
 const SETUP_TOKEN_TTL_MS = 15 * 60 * 1000
 
@@ -85,6 +86,10 @@ export async function saveCredentials(phoneNumber, credentials) {
         setupTokenExpiresAt: null,
       },
     })
+
+    // Primera vez que este número completa el setup: asegura que exista un
+    // User para que Rendicion/Expense/AuditLog tengan a quién referenciar
+    await getOrCreateUserByPhoneNumber(phoneNumber)
 
     logger.info(`[CREDENTIALS] Credenciales guardadas para ${phoneNumber}`)
   } catch (error) {
