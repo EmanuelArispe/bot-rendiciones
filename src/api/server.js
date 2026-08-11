@@ -3,8 +3,13 @@
  */
 
 import express from 'express'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import credentialRoutes from './routes/credential-routes.js'
 import logger from '../utils/logger.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const viewsDir = path.join(__dirname, '../views')
 
 export function createServer() {
   const app = express()
@@ -12,6 +17,7 @@ export function createServer() {
   app.use(express.json())
   app.use(express.urlencoded({ extended: true }))
 
+  app.use('/static', express.static(viewsDir))
   app.use('/', credentialRoutes)
 
   return app
