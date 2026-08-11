@@ -15,10 +15,11 @@ datasource db {
 // ============================================
 
 model User {
-  id        Int       @id @default(autoincrement())
-  email     String    @unique
-  firstName String?
-  lastName  String?
+  id          Int       @id @default(autoincrement())
+  email       String?   @unique
+  phoneNumber String?   @unique // Vínculo con WhatsappSession.phoneNumber (setup-credentials)
+  firstName   String?
+  lastName    String?
 
   // Config del vehículo
   vehicleId       String?  // ID del vehículo en el GPS
@@ -39,6 +40,7 @@ model User {
   whatsappConnections WhatsappConnection[]
 
   @@index([email])
+  @@index([phoneNumber])
 }
 
 // ============================================
