@@ -17,40 +17,15 @@ datasource db {
 model User {
   id          Int       @id @default(autoincrement())
   email       String?   @unique
-  phoneNumber String?   @unique // Vínculo con WhatsappSession.phoneNumber (setup-credentials)
   firstName   String?
   lastName    String?
 
   // Config del vehículo
   vehicleId       String?  // ID del vehículo en el GPS
   vehicleModel    String?  // ej: "VW AMAROK CONFORTLINE V6"
-  
-  // Estado
-  isActive        Boolean  @default(true)
-  lastLogin       DateTime?
-  
-  // Auditoría
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relaciones
-  rendiciones     Rendicion[]
-  expenses        Expense[]
-  logs            AuditLog[]
 
-  @@index([email])
-  @@index([phoneNumber])
-}
-
-// ============================================
-// CREDENCIALES DE USUARIO (GPS + Empresa)
-// ============================================
-// Identificadas por número de WhatsApp: el flujo de setup ("setup-credentials")
-// corre antes de que exista cualquier vínculo con la tabla User.
-
-model WhatsappSession {
-  id              Int       @id @default(autoincrement())
-  phoneNumber     String    @unique
+  // Link personal de acceso a la webapp
+  accessToken     String    @unique
 
   // Credenciales GPS (cifradas con AES-256-GCM, no bcrypt: deben poder
   // recuperarse en texto plano para loguear vía Puppeteer)
@@ -62,18 +37,24 @@ model WhatsappSession {
   companyPasswordEncrypted  String?
 
   credentialsStatus      CredentialStatus @default(SETUP_PENDING)
-  lastValidationSuccess  DateTime?        // Última vez que las credenciales funcionaron
+  lastValidationSuccess  DateTime?
 
-  // Token de configuración (válido 15 minutos)
-  setupToken           String?   @unique
-  setupTokenExpiresAt  DateTime?
+  // Estado
+  isActive        Boolean  @default(true)
+  lastLogin       DateTime?
 
+  // Auditoría
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  usageLogs       CredentialUsageLog[]
+  // Relaciones
+  rendiciones         Rendicion[]
+  expenses            Expense[]
+  logs                AuditLog[]
+  credentialUsageLogs CredentialUsageLog[]
 
-  @@index([phoneNumber])
+  @@index([email])
+  @@index([accessToken])
 }
 
 enum CredentialStatus {
@@ -84,15 +65,15 @@ enum CredentialStatus {
 
 model CredentialUsageLog {
   id              Int       @id @default(autoincrement())
-  phoneNumber     String
-  session         WhatsappSession @relation(fields: [phoneNumber], references: [phoneNumber])
+  userId          Int
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   service         CredentialUsageService
   success         Boolean
   errorMessage    String?
   timestamp       DateTime  @default(now())
 
-  @@index([phoneNumber, service])
+  @@index([userId, service])
 }
 
 enum CredentialUsageService {
@@ -269,7 +250,6 @@ model AuditLog {
 }
 
 enum LogSource {
-  WHATSAPP
   WEB
   API
   SYSTEM

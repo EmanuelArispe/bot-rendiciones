@@ -1,25 +1,43 @@
 /**
- * Resolución de User a partir del número de WhatsApp
+ * Alta de usuarios y resolución por token de acceso
  */
 
+import crypto from 'crypto'
 import prisma from '../db/prisma.js'
 import { DatabaseError } from '../utils/error-handler.js'
 
-/**
- * Busca el User vinculado a un phoneNumber, o lo crea si no existe
- */
-export async function getOrCreateUserByPhoneNumber(phoneNumber) {
-  try {
-    const user = await prisma.user.upsert({
-      where: { phoneNumber },
-      update: {},
-      create: { phoneNumber },
-    })
+function generateAccessToken() {
+  return crypto.randomBytes(32).toString('hex')
+}
 
-    return user
+export async function createUser({ email, firstName, lastName } = {}) {
+  try {
+    return await prisma.user.create({
+      data: {
+        email,
+        firstName,
+        lastName,
+        accessToken: generateAccessToken(),
+      },
+    })
   } catch (error) {
-    throw new DatabaseError('No se pudo resolver el usuario por número de WhatsApp', {
-      phoneNumber,
+    throw new DatabaseError('No se pudo crear el usuario', { cause: error.message })
+  }
+}
+
+export async function getUserByAccessToken(token) {
+  return prisma.user.findUnique({ where: { accessToken: token } })
+}
+
+export async function regenerateAccessToken(userId) {
+  try {
+    return await prisma.user.update({
+      where: { id: userId },
+      data: { accessToken: generateAccessToken() },
+    })
+  } catch (error) {
+    throw new DatabaseError('No se pudo regenerar el token de acceso', {
+      userId,
       cause: error.message,
     })
   }

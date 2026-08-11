@@ -6,7 +6,8 @@ import { Router } from 'express'
 import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { validateSetupToken, saveCredentials } from '../../services/credential-service.js'
+import { saveCredentials } from '../../services/credential-service.js'
+import { getUserByAccessToken } from '../../services/user-service.js'
 import { validateCredentialsAgainstAPIs } from '../../utils/credential-validator.js'
 import logger from '../../utils/logger.js'
 
@@ -71,7 +72,7 @@ function renderErrorPage(message) {
   return renderMessagePage({
     title: 'Error',
     heading: `⚠️ ${escapeHtml(message)}`,
-    body: 'Escribí <strong>setup-credentials</strong> de nuevo por WhatsApp para generar un link nuevo.',
+    body: 'Revisá el link que te compartieron.',
   })
 }
 
@@ -80,17 +81,17 @@ router.get('/setup', async (req, res) => {
   const { token } = req.query
 
   if (!token) {
-    return res.status(400).type('html').send(renderErrorPage('Falta el token de configuración'))
+    return res.status(400).type('html').send(renderErrorPage('Falta el token de acceso'))
   }
 
-  try {
-    await validateSetupToken(token)
-    const html = await renderForm({ token })
-    res.type('html').send(html)
-  } catch (error) {
-    logger.warn('[CREDENTIAL_ROUTES] Token inválido en GET /setup', { error: error.message })
-    res.status(400).type('html').send(renderErrorPage(error.message))
+  const user = await getUserByAccessToken(token)
+
+  if (!user) {
+    logger.warn('[CREDENTIAL_ROUTES] Token inválido en GET /setup')
+    return res.status(400).type('html').send(renderErrorPage('Token inválido'))
   }
+
+  res.type('html').send(await renderForm({ token }))
 })
 
 // POST /setup/validate → valida contra APIs reales UNA VEZ y guarda si OK
@@ -110,9 +111,13 @@ router.post('/setup/validate', async (req, res) => {
       .send(await renderForm({ token, values, error: 'Completá todos los campos.' }))
   }
 
-  try {
-    const session = await validateSetupToken(token)
+  const user = await getUserByAccessToken(token)
 
+  if (!user) {
+    return res.status(400).type('html').send(renderErrorPage('Token inválido'))
+  }
+
+  try {
     const result = await validateCredentialsAgainstAPIs({
       gpsUsername,
       gpsPassword,
@@ -133,7 +138,7 @@ router.post('/setup/validate', async (req, res) => {
       )
     }
 
-    await saveCredentials(session.phoneNumber, {
+    await saveCredentials(user.id, {
       gpsUsername,
       gpsPassword,
       companyUsername,
@@ -144,7 +149,7 @@ router.post('/setup/validate', async (req, res) => {
       renderMessagePage({
         title: 'Listo',
         heading: '✅ Credenciales guardadas',
-        body: 'Ya podés volver a WhatsApp, tus credenciales quedaron activas.',
+        body: 'Tus credenciales quedaron activas.',
       })
     )
   } catch (error) {
