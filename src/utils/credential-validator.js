@@ -1,7 +1,5 @@
 /**
  * Validación de credenciales contra las APIs reales (GPS + Empresa)
- * Se usa UNA SOLA VEZ, en el formulario de setup. No se reintenta acá:
- * si el login falla en producción se maneja en credential-manager.js.
  */
 
 import puppeteer from 'puppeteer'

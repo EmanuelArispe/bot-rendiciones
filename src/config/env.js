@@ -32,13 +32,6 @@ export function loadEnv() {
       url: getEnvVar('DATABASE_URL'),
     },
 
-    // WhatsApp / Baileys
-    whatsapp: {
-      sessionId: getEnvVar('BAILEYS_SESSION_ID', 'default'),
-      authTimeout: parseInt(getEnvVar('BAILEYS_AUTH_TIMEOUT', '60000')),
-      syncInterval: parseInt(getEnvVar('BAILEYS_SYNC_INTERVAL', '5000')),
-    },
-
     // Puppeteer
     puppeteer: {
       headless: getEnvVar('PUPPETEER_HEADLESS', 'true') === 'true',
@@ -65,7 +58,6 @@ export function loadEnv() {
     paths: {
       photos: getEnvVar('PHOTOS_DIR', './downloads'),
       logs: getEnvVar('LOGS_DIR', './logs'),
-      sessions: getEnvVar('SESSIONS_DIR', './sessions'),
       logFile: getEnvVar('LOG_FILE', './logs/bot.log'),
       screenshots: getEnvVar('SCREENSHOTS_DIR', './screenshots'),
     },
@@ -145,7 +137,6 @@ export function getConfig(key) {
 export function validateEnv() {
   const criticalVars = [
     'DATABASE_URL',
-    'BAILEYS_SESSION_ID',
     'PUPPETEER_TIMEOUT',
   ]
 

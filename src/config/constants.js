@@ -62,22 +62,18 @@ export const SELECTORS = {
 }
 
 // ============================================
-// MENSAJES DEL BOT
+// MENSAJES
 // ============================================
 export const MESSAGES = {
   SUCCESS: {
     RENDITION_LOADED: (location, km, amount, date) =>
       `✅ Rendición completada!\n\n📊 Resumen:\n- Localidad: ${location}\n- Fecha: ${date}\n- Distancia: ${km} km\n- Combustible: $${amount}\n\n✅ Estado: Cargado\n\nPuedes verificar en la plataforma.`,
 
-    PROCESSING: '⏳ Procesando tu rendición...',
-
     CONFIRM_OCR: (amount) =>
       `OCR detectó: $${amount}\n¿Confirmás este monto? (Sí/No)`,
   },
 
   ERROR: {
-    INVALID_FORMAT: '❌ Formato inválido. Usa:\n"Viaje - DD/MM - Localidad - foto"',
-
     GPS_ERROR: '❌ Error al extraer KMs del GPS. Reintentando...',
 
     OCR_ERROR: '❌ No se pudo detectar el monto de la factura. Ingresalo manualmente: $___',
@@ -128,12 +124,6 @@ export const PAYMENT_METHODS = {
 // PATRONES REGEX
 // ============================================
 export const PATTERNS = {
-  // Formato: "Viaje - 15/01 - Tandil - foto.jpg"
-  TRIP_MESSAGE: /viaje\s*-\s*(\d{1,2}\/\d{1,2})\s*-\s*([a-záéíóú\s]+)\s*-/i,
-
-  // Formato: "Mantenimiento - 10/01 - Cambio aceite - $500"
-  MAINTENANCE_MESSAGE: /mantenimiento\s*-\s*(\d{1,2}\/\d{1,2})\s*-\s*([^-]+)\s*-\s*\$?(\d+)/i,
-
   // Extrae número de monto: $850 o 850
   AMOUNT: /\$?\s*(\d+(?:\.\d{2})?)/g,
 
@@ -142,9 +132,6 @@ export const PATTERNS = {
 
   // Email
   EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-
-  // Número de teléfono WhatsApp
-  PHONE: /^\d{10,15}$/,
 }
 
 // ============================================
