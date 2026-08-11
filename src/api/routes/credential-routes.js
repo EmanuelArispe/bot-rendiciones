@@ -51,24 +51,29 @@ async function renderForm({
     .replaceAll('{{COMPANY_STATUS}}', fieldStatus(companyError, companyOk))
 }
 
-function renderErrorPage(message) {
+function renderMessagePage({ title, heading, body }) {
   return `<!doctype html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Error - Bot Rendiciones</title>
-  <style>
-    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; justify-content: center; padding: 40px 16px; margin: 0; }
-    .card { background: #1e293b; border-radius: 12px; padding: 32px; max-width: 420px; text-align: center; }
-  </style>
+  <title>${escapeHtml(title)} - Bot Rendiciones</title>
+  <link rel="stylesheet" href="/static/credential-form.css" />
 </head>
 <body>
-  <div class="card">
-    <h1>⚠️ ${message}</h1>
-    <p>Escribí <strong>setup-credentials</strong> de nuevo por WhatsApp para generar un link nuevo.</p>
+  <div class="card card-message">
+    <h1>${heading}</h1>
+    <p>${body}</p>
   </div>
 </body>
 </html>`
+}
+
+function renderErrorPage(message) {
+  return renderMessagePage({
+    title: 'Error',
+    heading: `⚠️ ${escapeHtml(message)}`,
+    body: 'Escribí <strong>setup-credentials</strong> de nuevo por WhatsApp para generar un link nuevo.',
+  })
 }
 
 // GET /setup?token=xyz → muestra el formulario
@@ -141,15 +146,13 @@ router.post('/setup/validate', async (req, res) => {
       `✅ Tus credenciales quedaron guardadas y validadas\n\nYa podés usar el bot para rendir viajes.`
     )
 
-    res
-      .type('html')
-      .send(
-        `<!doctype html><html lang="es"><head><meta charset="UTF-8" /><title>Listo</title>
-        <style>body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;justify-content:center;padding:40px 16px;margin:0;}
-        .card{background:#1e293b;border-radius:12px;padding:32px;max-width:420px;text-align:center;}</style>
-        </head><body><div class="card"><h1>✅ Credenciales guardadas</h1>
-        <p>Ya podés volver a WhatsApp, tus credenciales quedaron activas.</p></div></body></html>`
-      )
+    res.type('html').send(
+      renderMessagePage({
+        title: 'Listo',
+        heading: '✅ Credenciales guardadas',
+        body: 'Ya podés volver a WhatsApp, tus credenciales quedaron activas.',
+      })
+    )
   } catch (error) {
     logger.error('[CREDENTIAL_ROUTES] Error en POST /setup/validate', { error: error.message })
     res.status(400).type('html').send(await renderForm({ token, values, error: error.message }))
