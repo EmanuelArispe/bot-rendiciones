@@ -112,12 +112,17 @@ model CredentialUsageLog {
   phoneNumber     String
   session         WhatsappSession @relation(fields: [phoneNumber], references: [phoneNumber])
 
-  service         String    // "GPS", "FORM"
+  service         CredentialUsageService
   success         Boolean
   errorMessage    String?
   timestamp       DateTime  @default(now())
 
   @@index([phoneNumber, service])
+}
+
+enum CredentialUsageService {
+  GPS
+  FORM
 }
 
 // ============================================
@@ -203,7 +208,9 @@ model Expense {
   
   // Método de pago
   paymentMethod   PaymentMethod // TARJETA, EFECTIVO, CHEQUE
-  paymentReference String?  // Número de tarjeta, cheque, etc
+  // ⚠️ NUNCA guardar el número completo de tarjeta acá. Solo una referencia
+  // parcial (ej. últimos 4 dígitos) o el número de cheque/transferencia.
+  paymentReference String?
   
   // Documentación
   receiptPath     String?   // Ruta a foto de recibo/factura
@@ -273,7 +280,7 @@ model AuditLog {
   errorMessage    String?   @db.Text
   
   // Source
-  source          String    // "whatsapp", "web", "api", "system"
+  source          LogSource
   userAgent       String?   // De dónde vino la acción
   
   // Auditoría
@@ -284,6 +291,13 @@ model AuditLog {
   @@index([action])
   @@index([status])
   @@index([createdAt])
+}
+
+enum LogSource {
+  WHATSAPP
+  WEB
+  API
+  SYSTEM
 }
 
 enum LogStatus {

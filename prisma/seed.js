@@ -99,7 +99,7 @@ async function main() {
         purpose: 'Testing',
         createdAt: new Date(),
       }),
-      source: 'system',
+      source: 'SYSTEM',
     },
   })
 
