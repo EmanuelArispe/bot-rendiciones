@@ -16,12 +16,39 @@ const formPath = path.join(__dirname, '../../views/credential-form.html')
 
 const router = Router()
 
-async function renderForm({ token, error = '' }) {
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function fieldStatus(error, ok) {
+  if (error) return `<div class="field-error">⚠️ ${escapeHtml(error)}</div>`
+  if (ok) return `<div class="field-ok">✅ Validado correctamente</div>`
+  return ''
+}
+
+async function renderForm({
+  token,
+  values = {},
+  error = '',
+  gpsError = null,
+  companyError = null,
+  gpsOk = false,
+  companyOk = false,
+}) {
   const html = await fs.readFile(formPath, 'utf8')
 
   return html
-    .replaceAll('{{TOKEN}}', token || '')
-    .replaceAll('{{ERROR}}', error ? `<div class="error">${error}</div>` : '')
+    .replaceAll('{{TOKEN}}', escapeHtml(token))
+    .replaceAll('{{ERROR}}', error ? `<div class="error">${escapeHtml(error)}</div>` : '')
+    .replaceAll('{{GPS_USERNAME}}', escapeHtml(values.gpsUsername))
+    .replaceAll('{{COMPANY_USERNAME}}', escapeHtml(values.companyUsername))
+    .replaceAll('{{GPS_STATUS}}', fieldStatus(gpsError, gpsOk))
+    .replaceAll('{{COMPANY_STATUS}}', fieldStatus(companyError, companyOk))
 }
 
 function renderErrorPage(message) {
@@ -70,11 +97,13 @@ router.post('/setup/validate', async (req, res) => {
     return res.status(400).type('html').send(renderErrorPage('Falta el token de configuración'))
   }
 
+  const values = { gpsUsername, companyUsername }
+
   if (!gpsUsername || !gpsPassword || !companyUsername || !companyPassword) {
     return res
       .status(400)
       .type('html')
-      .send(await renderForm({ token, error: 'Completá todos los campos.' }))
+      .send(await renderForm({ token, values, error: 'Completá todos los campos.' }))
   }
 
   try {
@@ -88,8 +117,16 @@ router.post('/setup/validate', async (req, res) => {
     })
 
     if (!result.valid) {
-      const errorText = [result.errors.gps, result.errors.company].filter(Boolean).join(' | ')
-      return res.status(400).type('html').send(await renderForm({ token, error: errorText }))
+      return res.status(400).type('html').send(
+        await renderForm({
+          token,
+          values,
+          gpsError: result.errors.gps,
+          companyError: result.errors.company,
+          gpsOk: !result.errors.gps,
+          companyOk: !result.errors.company,
+        })
+      )
     }
 
     await saveCredentials(session.phoneNumber, {
@@ -115,7 +152,7 @@ router.post('/setup/validate', async (req, res) => {
       )
   } catch (error) {
     logger.error('[CREDENTIAL_ROUTES] Error en POST /setup/validate', { error: error.message })
-    res.status(400).type('html').send(await renderForm({ token, error: error.message }))
+    res.status(400).type('html').send(await renderForm({ token, values, error: error.message }))
   }
 })
 
