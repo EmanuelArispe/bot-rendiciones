@@ -12,17 +12,28 @@ router.get('/app/rendicion', requireUser, async (req, res) => {
 })
 
 router.post('/app/rendicion', requireUser, async (req, res) => {
-  const { travelDateFrom, travelDateTo, destinationProvinceCode, destinationCity, details } = req.body || {}
-  const values = { travelDateFrom, travelDateTo, destinationProvinceCode, destinationCity, details }
+  const {
+    travelDateFrom,
+    travelDateTo,
+    originProvinceCode,
+    originCity,
+    destinationProvinceCode,
+    destinationCity,
+    details,
+  } = req.body || {}
+
+  const values = {
+    travelDateFrom,
+    travelDateTo,
+    originProvinceCode,
+    originCity,
+    destinationProvinceCode,
+    destinationCity,
+    details,
+  }
 
   try {
-    await createRendicion(req.user, {
-      travelDateFrom,
-      travelDateTo,
-      destinationProvinceCode,
-      destinationCity,
-      details,
-    })
+    await createRendicion(req.user, values)
 
     res.type('html').send(
       renderMessagePage({

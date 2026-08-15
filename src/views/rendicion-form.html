@@ -29,13 +29,19 @@
         </div>
       </div>
 
-      <label>Origen</label>
-      <p class="readonly-info">{{ORIGIN_LABEL}}</p>
+      <label for="originProvinceCode">Provincia de origen</label>
+      <select id="originProvinceCode" name="originProvinceCode" required>
+        <option value="">Seleccionar...</option>
+        {{ORIGIN_PROVINCE_OPTIONS}}
+      </select>
+
+      <label for="originCity">Ciudad de origen</label>
+      <input type="text" id="originCity" name="originCity" value="{{ORIGIN_CITY}}" required autocomplete="off" />
 
       <label for="destinationProvinceCode">Provincia de destino</label>
       <select id="destinationProvinceCode" name="destinationProvinceCode" required>
         <option value="">Seleccionar...</option>
-        {{PROVINCE_OPTIONS}}
+        {{DESTINATION_PROVINCE_OPTIONS}}
       </select>
 
       <label for="destinationCity">Ciudad de destino</label>

@@ -3,9 +3,27 @@ import logger from '../utils/logger.js'
 import { ValidationError, DatabaseError } from '../utils/error-handler.js'
 import { isValidProvinceCode, getProvinceName } from '../config/company-locations.js'
 
+function validateLocation(provinceCode, city, label) {
+  if (!isValidProvinceCode(provinceCode)) {
+    throw new ValidationError(`Provincia de ${label} inválida`)
+  }
+
+  if (!city?.trim()) {
+    throw new ValidationError(`La ciudad de ${label} es obligatoria`)
+  }
+}
+
 export async function createRendicion(
   user,
-  { travelDateFrom, travelDateTo, destinationProvinceCode, destinationCity, details }
+  {
+    travelDateFrom,
+    travelDateTo,
+    originProvinceCode,
+    originCity,
+    destinationProvinceCode,
+    destinationCity,
+    details,
+  }
 ) {
   const parsedFrom = new Date(travelDateFrom)
   const parsedTo = new Date(travelDateTo)
@@ -18,26 +36,17 @@ export async function createRendicion(
     throw new ValidationError('La fecha desde no puede ser posterior a la fecha hasta')
   }
 
-  if (!user.originProvinceCode || !user.originCity) {
-    throw new ValidationError('Tu usuario todavía no tiene un origen configurado')
-  }
-
-  if (!isValidProvinceCode(destinationProvinceCode)) {
-    throw new ValidationError('Provincia de destino inválida')
-  }
-
-  if (!destinationCity?.trim()) {
-    throw new ValidationError('La ciudad de destino es obligatoria')
-  }
+  validateLocation(originProvinceCode, originCity, 'origen')
+  validateLocation(destinationProvinceCode, destinationCity, 'destino')
 
   try {
     const rendicion = await rendicionRepository.create({
       userId: user.id,
       travelDateFrom: parsedFrom,
       travelDateTo: parsedTo,
-      originProvinceCode: user.originProvinceCode,
-      originProvince: user.originProvince,
-      originCity: user.originCity,
+      originProvinceCode,
+      originProvince: getProvinceName(originProvinceCode),
+      originCity: originCity.trim(),
       destinationProvinceCode,
       destinationProvince: getProvinceName(destinationProvinceCode),
       destinationCity: destinationCity.trim(),
