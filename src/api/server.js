@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 import menuRoutes from './routes/menu-routes.js'
 import credentialRoutes from './routes/credential-routes.js'
 import rendicionRoutes from './routes/rendicion-routes.js'
+import mantenimientoRoutes from './routes/mantenimiento-routes.js'
 import logger from '../utils/logger.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -23,6 +24,7 @@ export function createServer() {
   app.use('/', menuRoutes)
   app.use('/', credentialRoutes)
   app.use('/', rendicionRoutes)
+  app.use('/', mantenimientoRoutes)
 
   return app
 }

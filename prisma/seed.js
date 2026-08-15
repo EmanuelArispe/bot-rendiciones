@@ -62,6 +62,7 @@ async function main() {
       userId: user.id,
       rendicionId: rendicion.id,
       type: 'COMBUSTIBLE',
+      expenseDate: new Date('2026-01-15'),
       description: 'Nafta Estación YPF Ruta 5',
       amount: 850.00,
       currency: 'ARS',
