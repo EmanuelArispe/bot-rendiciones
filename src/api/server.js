@@ -5,7 +5,9 @@
 import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import menuRoutes from './routes/menu-routes.js'
 import credentialRoutes from './routes/credential-routes.js'
+import rendicionRoutes from './routes/rendicion-routes.js'
 import logger from '../utils/logger.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -18,7 +20,9 @@ export function createServer() {
   app.use(express.urlencoded({ extended: true }))
 
   app.use('/static', express.static(viewsDir))
+  app.use('/', menuRoutes)
   app.use('/', credentialRoutes)
+  app.use('/', rendicionRoutes)
 
   return app
 }
