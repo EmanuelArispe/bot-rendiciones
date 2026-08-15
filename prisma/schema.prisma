@@ -24,6 +24,12 @@ model User {
   vehicleId       String?  // ID del vehículo en el GPS
   vehicleModel    String?  // ej: "VW AMAROK CONFORTLINE V6"
 
+  // Origen fijo para sus rendiciones (código de provincia según el sistema
+  // de la empresa; ver src/config/company-locations.js)
+  originProvinceCode String?
+  originProvince     String?  // ej: "BUENOS AIRES"
+  originCity         String?  // ej: "Tandil"
+
   // Link personal de acceso a la webapp
   accessToken     String    @unique
 
@@ -91,12 +97,19 @@ model Rendicion {
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   // Datos del viaje
-  travelDate      DateTime
-  origin          String    // ej: "Buenos Aires"
-  originCode      String?   // ej: "TANDIL-B A-7000-0"
-  destination     String    // ej: "Tandil"
-  destinationCode String?   // ej: "TANDIL-B A-7000-0"
-  
+  travelDateFrom  DateTime
+  travelDateTo    DateTime
+
+  // Origen: copiado del perfil del usuario al momento de crear la rendición
+  originProvinceCode String
+  originProvince      String
+  originCity          String
+
+  // Destino: elegido por el usuario en el formulario
+  destinationProvinceCode String
+  destinationProvince      String
+  destinationCity          String
+
   // Datos GPS (completados por el GPS Scraper, aún no implementado)
   kilometers      Decimal?  @db.Decimal(10, 2)
   gpsRetrievedAt  DateTime?
@@ -131,7 +144,7 @@ model Rendicion {
   logs            AuditLog[]
   
   @@index([userId])
-  @@index([travelDate])
+  @@index([travelDateFrom])
   @@index([status])
 }
 
