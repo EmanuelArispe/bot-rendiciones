@@ -37,13 +37,14 @@ model User {
   // recuperarse en texto plano para loguear vía Puppeteer)
   gpsUsername           String?
   gpsPasswordEncrypted  String?
+  gpsCredentialsStatus      CredentialStatus @default(SETUP_PENDING)
+  gpsLastValidationSuccess  DateTime?
 
   // Credenciales Empresa (La Segunda)
   companyUsername           String?
   companyPasswordEncrypted  String?
-
-  credentialsStatus      CredentialStatus @default(SETUP_PENDING)
-  lastValidationSuccess  DateTime?
+  companyCredentialsStatus      CredentialStatus @default(SETUP_PENDING)
+  companyLastValidationSuccess  DateTime?
 
   // Estado
   isActive        Boolean  @default(true)
