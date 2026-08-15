@@ -7,7 +7,7 @@ import { config } from 'dotenv'
 import { fileURLToPath } from 'url'
 import { dirname, resolve } from 'path'
 import logger from './utils/logger.js'
-import { loadEnv } from './config/env.js'
+import { loadEnv, validateEnv } from './config/env.js'
 import { startServer } from './api/server.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -20,10 +20,7 @@ async function main() {
     logger.info('🚀 Iniciando app de Rendición de Viaticos...')
 
     loadEnv()
-
-    if (!process.env.DATABASE_URL) {
-      throw new Error('❌ DATABASE_URL no está configurada en .env')
-    }
+    validateEnv()
 
     await startServer(process.env.PORT || 3000)
 

@@ -77,19 +77,6 @@ export function loadEnv() {
       screenshotOnError: getEnvVar('SCREENSHOT_ON_ERROR', 'true') === 'true',
     },
 
-    // Aplicaciones externas
-    gps: {
-      url: getEnvVar('GPS_URL'),
-      username: getEnvVar('GPS_USERNAME'),
-      password: getEnvVar('GPS_PASSWORD'),
-    },
-
-    company: {
-      url: getEnvVar('COMPANY_URL'),
-      username: getEnvVar('COMPANY_USERNAME'),
-      password: getEnvVar('COMPANY_PASSWORD'),
-    },
-
     // App config
     app: {
       port: parseInt(getEnvVar('PORT', '3000')),
@@ -110,24 +97,6 @@ export function loadEnv() {
   }
 
   return env
-}
-
-/**
- * Obtiene un valor de variable de entorno específica
- * @param {string} key - Clave completa (ej: 'database.url')
- * @returns {*} Valor de la variable
- */
-export function getConfig(key) {
-  const env = loadEnv()
-  const keys = key.split('.')
-  let value = env
-
-  for (const k of keys) {
-    value = value[k]
-    if (value === undefined) return null
-  }
-
-  return value
 }
 
 /**
