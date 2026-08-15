@@ -15,10 +15,11 @@ datasource db {
 // ============================================
 
 model User {
-  id          Int       @id @default(autoincrement())
-  email       String?   @unique
-  firstName   String?
-  lastName    String?
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  passwordHash String
+  firstName    String?
+  lastName     String?
 
   // Config del vehículo
   vehicleId       String?  // ID del vehículo en el GPS
@@ -30,7 +31,7 @@ model User {
   originProvince     String?  // ej: "BUENOS AIRES"
   originCity         String?  // ej: "Tandil"
 
-  // Link personal de acceso a la webapp
+  // Token de sesión (cookie httpOnly), rotado en cada logout
   accessToken     String    @unique
 
   // Credenciales GPS (cifradas con AES-256-GCM, no bcrypt: deben poder
@@ -48,6 +49,7 @@ model User {
 
   // Estado
   isActive        Boolean  @default(true)
+  isAdmin         Boolean  @default(false)
   lastLogin       DateTime?
 
   // Auditoría
