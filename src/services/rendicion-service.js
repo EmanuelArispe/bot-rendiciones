@@ -1,0 +1,70 @@
+import * as rendicionRepository from '../db/rendicion-repository.js'
+import logger from '../utils/logger.js'
+import { ValidationError, DatabaseError } from '../utils/error-handler.js'
+import { isValidProvinceCode, getProvinceName } from '../config/company-locations.js'
+
+function validateLocation(provinceCode, city, label) {
+  if (!isValidProvinceCode(provinceCode)) {
+    throw new ValidationError(`Provincia de ${label} inválida`)
+  }
+
+  if (!city?.trim()) {
+    throw new ValidationError(`La ciudad de ${label} es obligatoria`)
+  }
+}
+
+export async function createRendicion(
+  user,
+  {
+    travelDateFrom,
+    travelDateTo,
+    originProvinceCode,
+    originCity,
+    destinationProvinceCode,
+    destinationCity,
+    details,
+  }
+) {
+  const parsedFrom = new Date(travelDateFrom)
+  const parsedTo = new Date(travelDateTo)
+
+  if (Number.isNaN(parsedFrom.getTime()) || Number.isNaN(parsedTo.getTime())) {
+    throw new ValidationError('Fecha inválida')
+  }
+
+  if (parsedFrom > parsedTo) {
+    throw new ValidationError('La fecha desde no puede ser posterior a la fecha hasta')
+  }
+
+  validateLocation(originProvinceCode, originCity, 'origen')
+  validateLocation(destinationProvinceCode, destinationCity, 'destino')
+
+  try {
+    const rendicion = await rendicionRepository.create({
+      userId: user.id,
+      travelDateFrom: parsedFrom,
+      travelDateTo: parsedTo,
+      originProvinceCode,
+      originProvince: getProvinceName(originProvinceCode),
+      originCity: originCity.trim(),
+      destinationProvinceCode,
+      destinationProvince: getProvinceName(destinationProvinceCode),
+      destinationCity: destinationCity.trim(),
+      details: details?.trim() || null,
+      status: 'PENDING',
+    })
+
+    logger.info(`[RENDICION] Creada para el usuario ${user.id}`, { rendicionId: rendicion.id })
+
+    return rendicion
+  } catch (error) {
+    throw new DatabaseError('No se pudo guardar la rendición', {
+      userId: user.id,
+      cause: error.message,
+    })
+  }
+}
+
+export function getRendicionesByUser(userId, limit) {
+  return rendicionRepository.findByUserId(userId, limit)
+}

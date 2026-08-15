@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cargar Rendición - Bot Rendiciones</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <div class="card">
+    <h1>🧾 Cargar rendición</h1>
+    <p class="subtitle">
+      Los kilómetros se completan más adelante de forma automática.
+    </p>
+
+    {{ERROR}}
+
+    <form method="POST" action="/app/rendicion">
+      <input type="hidden" name="token" value="{{TOKEN}}" />
+
+      <div class="field-row">
+        <div>
+          <label for="travelDateFrom">Fecha desde</label>
+          <input type="date" id="travelDateFrom" name="travelDateFrom" value="{{TRAVEL_DATE_FROM}}" required />
+        </div>
+        <div>
+          <label for="travelDateTo">Fecha hasta</label>
+          <input type="date" id="travelDateTo" name="travelDateTo" value="{{TRAVEL_DATE_TO}}" required />
+        </div>
+      </div>
+
+      <label for="originProvinceCode">Provincia de origen</label>
+      <select id="originProvinceCode" name="originProvinceCode" required>
+        <option value="">Seleccionar...</option>
+        {{ORIGIN_PROVINCE_OPTIONS}}
+      </select>
+
+      <label for="originCity">Ciudad de origen</label>
+      <input type="text" id="originCity" name="originCity" value="{{ORIGIN_CITY}}" required autocomplete="off" />
+
+      <label for="destinationProvinceCode">Provincia de destino</label>
+      <select id="destinationProvinceCode" name="destinationProvinceCode" required>
+        <option value="">Seleccionar...</option>
+        {{DESTINATION_PROVINCE_OPTIONS}}
+      </select>
+
+      <label for="destinationCity">Ciudad de destino</label>
+      <input type="text" id="destinationCity" name="destinationCity" value="{{DESTINATION_CITY}}" required autocomplete="off" />
+
+      <label for="details">Detalle (opcional)</label>
+      <input type="text" id="details" name="details" value="{{DETAILS}}" autocomplete="off" />
+
+      <button type="submit">Guardar rendición</button>
+    </form>
+
+    <a class="back-link" href="/app?token={{TOKEN}}">← Volver al menú</a>
+  </div>
+</body>
+</html>
