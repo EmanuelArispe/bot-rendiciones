@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cargar Mantenimiento - Bot Rendiciones</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <div class="card">
+    <h1>🔧 Cargar mantenimiento</h1>
+    <p class="subtitle">
+      El monto se ingresa manualmente, sin lectura automática de la factura.
+    </p>
+
+    {{ERROR}}
+
+    <form method="POST" action="/app/mantenimiento" enctype="multipart/form-data">
+      <input type="hidden" name="token" value="{{TOKEN}}" />
+
+      <label for="date">Fecha</label>
+      <input type="date" id="date" name="date" value="{{DATE}}" required />
+
+      <label for="description">Descripción</label>
+      <input type="text" id="description" name="description" value="{{DESCRIPTION}}" required autocomplete="off" placeholder="ej: Cambio de aceite" />
+
+      <label for="amount">Monto</label>
+      <input type="number" id="amount" name="amount" value="{{AMOUNT}}" step="0.01" min="0.01" required />
+
+      <label for="paymentMethod">Método de pago</label>
+      <select id="paymentMethod" name="paymentMethod" required>
+        <option value="">Seleccionar...</option>
+        {{PAYMENT_METHOD_OPTIONS}}
+      </select>
+
+      <label for="receipt">Foto del comprobante (opcional)</label>
+      <input type="file" id="receipt" name="receipt" accept="image/*" capture="environment" />
+
+      <button type="submit">Guardar mantenimiento</button>
+    </form>
+
+    <a class="back-link" href="/app?token={{TOKEN}}">← Volver al menú</a>
+  </div>
+</body>
+</html>
