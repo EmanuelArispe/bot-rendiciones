@@ -97,12 +97,12 @@ model Rendicion {
   destination     String    // ej: "Tandil"
   destinationCode String?   // ej: "TANDIL-B A-7000-0"
   
-  // Datos GPS
-  kilometers      Decimal   @db.Decimal(10, 2)
+  // Datos GPS (completados por el GPS Scraper, aún no implementado)
+  kilometers      Decimal?  @db.Decimal(10, 2)
   gpsRetrievedAt  DateTime?
-  
+
   // Vehículo usado
-  vehicleUsed     String    // ej: "VW AMAROK CONFORTLINE V6 2018 AC767UI"
+  vehicleUsed     String?   // ej: "VW AMAROK CONFORTLINE V6 2018 AC767UI"
   
   // Foto del recorrido (si la guarda)
   photoPath       String?
