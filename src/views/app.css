@@ -113,3 +113,43 @@ button:hover {
   border: 1px solid #16a34a;
   color: #bbf7d0;
 }
+
+.menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.menu li + li {
+  margin-top: 12px;
+}
+
+.menu a {
+  display: block;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #e2e8f0;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.menu a:hover {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.back-link {
+  display: inline-block;
+  margin-top: 20px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: #e2e8f0;
+}
