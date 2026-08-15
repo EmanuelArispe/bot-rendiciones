@@ -38,13 +38,6 @@ export class OCRError extends AppError {
   }
 }
 
-export class WhatsAppError extends AppError {
-  constructor(message, context = {}) {
-    super(message, 500, { ...context, service: 'WhatsApp' })
-    this.name = 'WhatsAppError'
-  }
-}
-
 export class DatabaseError extends AppError {
   constructor(message, context = {}) {
     super(message, 503, { ...context, service: 'Database' })
@@ -167,39 +160,6 @@ export function handlePuppeteerError(error, context = {}) {
 }
 
 /**
- * Maneja errores de Baileys/WhatsApp
- */
-export function handleWhatsAppError(error, context = {}) {
-  const errorMessage = error.message || String(error)
-
-  if (errorMessage.includes('login')) {
-    return new WhatsAppError('Error de autenticación en WhatsApp', {
-      ...context,
-      type: 'AUTH_ERROR',
-    })
-  }
-
-  if (errorMessage.includes('connection')) {
-    return new WhatsAppError('Error de conexión a WhatsApp', {
-      ...context,
-      type: 'CONNECTION_ERROR',
-    })
-  }
-
-  if (errorMessage.includes('QR')) {
-    return new WhatsAppError('Error generando código QR', {
-      ...context,
-      type: 'QR_ERROR',
-    })
-  }
-
-  return new WhatsAppError(`Error en WhatsApp: ${errorMessage}`, {
-    ...context,
-    type: 'WHATSAPP_ERROR',
-  })
-}
-
-/**
  * Maneja errores de OCR/Tesseract
  */
 export function handleOCRError(error, context = {}) {
@@ -290,29 +250,3 @@ export function logAppError(error, context = {}) {
   }
 }
 
-/**
- * Formatea mensaje de error para usuario
- */
-export function formatErrorForUser(error) {
-  if (error instanceof ValidationError) {
-    return `❌ Datos inválidos: ${error.message}`
-  }
-
-  if (error instanceof GPSError) {
-    return `❌ Error extrayendo datos del GPS: ${error.message}`
-  }
-
-  if (error instanceof CompanyFormError) {
-    return `❌ Error cargando en sistema: ${error.message}`
-  }
-
-  if (error instanceof OCRError) {
-    return `❌ Error procesando factura: ${error.message}`
-  }
-
-  if (error instanceof DatabaseError) {
-    return `❌ Error guardando en base de datos`
-  }
-
-  return `❌ Ocurrió un error: ${error.message}`
-}
