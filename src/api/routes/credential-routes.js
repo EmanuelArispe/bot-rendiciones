@@ -1,59 +1,30 @@
 /**
- * Rutas HTTP del formulario de setup de credenciales
+ * Rutas HTTP del formulario de credenciales
  */
 
 import { Router } from 'express'
 import { saveCredentials } from '../../services/credential-service.js'
-import { getUserByAccessToken } from '../../services/user-service.js'
 import { validateCredentialsAgainstAPIs } from '../../utils/credential-validator.js'
-import {
-  renderCredentialForm,
-  renderMessagePage,
-  renderErrorPage,
-} from '../../views/renderers/credential-form-renderer.js'
+import { requireUser } from '../middleware/require-user.js'
+import { renderCredentialForm } from '../../views/renderers/credential-form-renderer.js'
+import { renderMessagePage } from '../../views/renderers/page-renderer.js'
 import logger from '../../utils/logger.js'
 
 const router = Router()
 
-// GET /setup?token=xyz → muestra el formulario
-router.get('/setup', async (req, res) => {
-  const { token } = req.query
-
-  if (!token) {
-    return res.status(400).type('html').send(renderErrorPage('Falta el token de acceso'))
-  }
-
-  const user = await getUserByAccessToken(token)
-
-  if (!user) {
-    logger.warn('[CREDENTIAL_ROUTES] Token inválido en GET /setup')
-    return res.status(400).type('html').send(renderErrorPage('Token inválido'))
-  }
-
-  res.type('html').send(await renderCredentialForm({ token }))
+router.get('/app/credenciales', requireUser, async (req, res) => {
+  res.type('html').send(await renderCredentialForm({ token: req.token }))
 })
 
-// POST /setup/validate → valida contra APIs reales UNA VEZ y guarda si OK
-router.post('/setup/validate', async (req, res) => {
-  const { token, gpsUsername, gpsPassword, companyUsername, companyPassword } = req.body || {}
-
-  if (!token) {
-    return res.status(400).type('html').send(renderErrorPage('Falta el token de configuración'))
-  }
-
+router.post('/app/credenciales', requireUser, async (req, res) => {
+  const { gpsUsername, gpsPassword, companyUsername, companyPassword } = req.body || {}
   const values = { gpsUsername, companyUsername }
 
   if (!gpsUsername || !gpsPassword || !companyUsername || !companyPassword) {
     return res
       .status(400)
       .type('html')
-      .send(await renderCredentialForm({ token, values, error: 'Completá todos los campos.' }))
-  }
-
-  const user = await getUserByAccessToken(token)
-
-  if (!user) {
-    return res.status(400).type('html').send(renderErrorPage('Token inválido'))
+      .send(await renderCredentialForm({ token: req.token, values, error: 'Completá todos los campos.' }))
   }
 
   try {
@@ -67,7 +38,7 @@ router.post('/setup/validate', async (req, res) => {
     if (!result.valid) {
       return res.status(400).type('html').send(
         await renderCredentialForm({
-          token,
+          token: req.token,
           values,
           gpsError: result.errors.gps,
           companyError: result.errors.company,
@@ -77,7 +48,7 @@ router.post('/setup/validate', async (req, res) => {
       )
     }
 
-    await saveCredentials(user.id, {
+    await saveCredentials(req.user.id, {
       gpsUsername,
       gpsPassword,
       companyUsername,
@@ -88,15 +59,15 @@ router.post('/setup/validate', async (req, res) => {
       renderMessagePage({
         title: 'Listo',
         heading: '✅ Credenciales guardadas',
-        body: 'Tus credenciales quedaron activas.',
+        body: `Tus credenciales quedaron activas. <a class="back-link" href="/app?token=${req.token}">← Volver al menú</a>`,
       })
     )
   } catch (error) {
-    logger.error('[CREDENTIAL_ROUTES] Error en POST /setup/validate', { error: error.message })
+    logger.error('[CREDENTIAL_ROUTES] Error en POST /app/credenciales', { error: error.message })
     res
       .status(400)
       .type('html')
-      .send(await renderCredentialForm({ token, values, error: error.message }))
+      .send(await renderCredentialForm({ token: req.token, values, error: error.message }))
   }
 })
 
