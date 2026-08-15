@@ -28,10 +28,12 @@ async function main() {
       accessToken: crypto.randomBytes(32).toString('hex'),
       gpsUsername: 'emanuelprueba',
       gpsPasswordEncrypted: encrypt('gps_password_123'),
+      gpsCredentialsStatus: 'ACTIVE',
+      gpsLastValidationSuccess: new Date(),
       companyUsername: 'eperez',
       companyPasswordEncrypted: encrypt('company_password_123'),
-      credentialsStatus: 'ACTIVE',
-      lastValidationSuccess: new Date(),
+      companyCredentialsStatus: 'ACTIVE',
+      companyLastValidationSuccess: new Date(),
     },
   })
 
