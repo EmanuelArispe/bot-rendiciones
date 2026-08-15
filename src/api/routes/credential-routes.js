@@ -3,78 +3,17 @@
  */
 
 import { Router } from 'express'
-import fs from 'fs/promises'
-import path from 'path'
-import { fileURLToPath } from 'url'
 import { saveCredentials } from '../../services/credential-service.js'
 import { getUserByAccessToken } from '../../services/user-service.js'
 import { validateCredentialsAgainstAPIs } from '../../utils/credential-validator.js'
+import {
+  renderCredentialForm,
+  renderMessagePage,
+  renderErrorPage,
+} from '../../views/renderers/credential-form-renderer.js'
 import logger from '../../utils/logger.js'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const formPath = path.join(__dirname, '../../views/credential-form.html')
-
 const router = Router()
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
-
-function fieldStatus(error, ok) {
-  if (error) return `<div class="field-error">⚠️ ${escapeHtml(error)}</div>`
-  if (ok) return `<div class="field-ok">✅ Validado correctamente</div>`
-  return ''
-}
-
-async function renderForm({
-  token,
-  values = {},
-  error = '',
-  gpsError = null,
-  companyError = null,
-  gpsOk = false,
-  companyOk = false,
-}) {
-  const html = await fs.readFile(formPath, 'utf8')
-
-  return html
-    .replaceAll('{{TOKEN}}', escapeHtml(token))
-    .replaceAll('{{ERROR}}', error ? `<div class="error">${escapeHtml(error)}</div>` : '')
-    .replaceAll('{{GPS_USERNAME}}', escapeHtml(values.gpsUsername))
-    .replaceAll('{{COMPANY_USERNAME}}', escapeHtml(values.companyUsername))
-    .replaceAll('{{GPS_STATUS}}', fieldStatus(gpsError, gpsOk))
-    .replaceAll('{{COMPANY_STATUS}}', fieldStatus(companyError, companyOk))
-}
-
-function renderMessagePage({ title, heading, body }) {
-  return `<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <title>${escapeHtml(title)} - Bot Rendiciones</title>
-  <link rel="stylesheet" href="/static/credential-form.css" />
-</head>
-<body>
-  <div class="card card-message">
-    <h1>${heading}</h1>
-    <p>${body}</p>
-  </div>
-</body>
-</html>`
-}
-
-function renderErrorPage(message) {
-  return renderMessagePage({
-    title: 'Error',
-    heading: `⚠️ ${escapeHtml(message)}`,
-    body: 'Revisá el link que te compartieron.',
-  })
-}
 
 // GET /setup?token=xyz → muestra el formulario
 router.get('/setup', async (req, res) => {
@@ -91,7 +30,7 @@ router.get('/setup', async (req, res) => {
     return res.status(400).type('html').send(renderErrorPage('Token inválido'))
   }
 
-  res.type('html').send(await renderForm({ token }))
+  res.type('html').send(await renderCredentialForm({ token }))
 })
 
 // POST /setup/validate → valida contra APIs reales UNA VEZ y guarda si OK
@@ -108,7 +47,7 @@ router.post('/setup/validate', async (req, res) => {
     return res
       .status(400)
       .type('html')
-      .send(await renderForm({ token, values, error: 'Completá todos los campos.' }))
+      .send(await renderCredentialForm({ token, values, error: 'Completá todos los campos.' }))
   }
 
   const user = await getUserByAccessToken(token)
@@ -127,7 +66,7 @@ router.post('/setup/validate', async (req, res) => {
 
     if (!result.valid) {
       return res.status(400).type('html').send(
-        await renderForm({
+        await renderCredentialForm({
           token,
           values,
           gpsError: result.errors.gps,
@@ -154,7 +93,10 @@ router.post('/setup/validate', async (req, res) => {
     )
   } catch (error) {
     logger.error('[CREDENTIAL_ROUTES] Error en POST /setup/validate', { error: error.message })
-    res.status(400).type('html').send(await renderForm({ token, values, error: error.message }))
+    res
+      .status(400)
+      .type('html')
+      .send(await renderCredentialForm({ token, values, error: error.message }))
   }
 })
 

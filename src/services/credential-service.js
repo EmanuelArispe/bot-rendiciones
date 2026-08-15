@@ -2,7 +2,7 @@
  * Gestión de credenciales de usuario (GPS + Empresa)
  */
 
-import prisma from '../db/prisma.js'
+import * as userRepository from '../db/user-repository.js'
 import logger from '../utils/logger.js'
 import { encrypt, decrypt } from '../utils/crypto.js'
 import { DatabaseError } from '../utils/error-handler.js'
@@ -11,16 +11,13 @@ export async function saveCredentials(userId, credentials) {
   const { gpsUsername, gpsPassword, companyUsername, companyPassword } = credentials
 
   try {
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        gpsUsername,
-        gpsPasswordEncrypted: encrypt(gpsPassword),
-        companyUsername,
-        companyPasswordEncrypted: encrypt(companyPassword),
-        credentialsStatus: 'ACTIVE',
-        lastValidationSuccess: new Date(),
-      },
+    await userRepository.update(userId, {
+      gpsUsername,
+      gpsPasswordEncrypted: encrypt(gpsPassword),
+      companyUsername,
+      companyPasswordEncrypted: encrypt(companyPassword),
+      credentialsStatus: 'ACTIVE',
+      lastValidationSuccess: new Date(),
     })
 
     logger.info(`[CREDENTIALS] Credenciales guardadas para el usuario ${userId}`)
@@ -33,7 +30,7 @@ export async function saveCredentials(userId, credentials) {
 }
 
 export async function getCredentials(userId) {
-  const user = await prisma.user.findUnique({ where: { id: userId } })
+  const user = await userRepository.findById(userId)
 
   if (!user || user.credentialsStatus !== 'ACTIVE') {
     return null
@@ -49,10 +46,7 @@ export async function getCredentials(userId) {
 
 export async function markCredentialsAsInvalid(userId, reason) {
   try {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { credentialsStatus: 'INVALID_CREDENTIALS' },
-    })
+    await userRepository.update(userId, { credentialsStatus: 'INVALID_CREDENTIALS' })
 
     logger.warn(`[CREDENTIALS] Credenciales inválidas para el usuario ${userId}: ${reason}`)
   } catch (error) {
