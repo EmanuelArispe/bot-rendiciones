@@ -14,20 +14,26 @@ function fieldStatus(error, ok) {
 
 export async function renderCredentialForm({
   token,
+  user,
   values = {},
   error = '',
   gpsError = null,
   companyError = null,
-  gpsOk = false,
-  companyOk = false,
+  gpsOk = null,
+  companyOk = null,
 }) {
   const html = await fs.readFile(formPath, 'utf8')
+
+  const resolvedGpsOk = gpsOk ?? user.gpsCredentialsStatus === 'ACTIVE'
+  const resolvedCompanyOk = companyOk ?? user.companyCredentialsStatus === 'ACTIVE'
 
   return html
     .replaceAll('{{TOKEN}}', escapeHtml(token))
     .replaceAll('{{ERROR}}', error ? `<div class="error">${escapeHtml(error)}</div>` : '')
-    .replaceAll('{{GPS_USERNAME}}', escapeHtml(values.gpsUsername))
-    .replaceAll('{{COMPANY_USERNAME}}', escapeHtml(values.companyUsername))
-    .replaceAll('{{GPS_STATUS}}', fieldStatus(gpsError, gpsOk))
-    .replaceAll('{{COMPANY_STATUS}}', fieldStatus(companyError, companyOk))
+    .replaceAll('{{GPS_USERNAME}}', escapeHtml(values.gpsUsername ?? user.gpsUsername))
+    .replaceAll('{{COMPANY_USERNAME}}', escapeHtml(values.companyUsername ?? user.companyUsername))
+    .replaceAll('{{GPS_STATUS}}', fieldStatus(gpsError, resolvedGpsOk))
+    .replaceAll('{{COMPANY_STATUS}}', fieldStatus(companyError, resolvedCompanyOk))
+    .replaceAll('{{GPS_REQUIRED}}', resolvedGpsOk && !gpsError ? '' : 'required')
+    .replaceAll('{{COMPANY_REQUIRED}}', resolvedCompanyOk && !companyError ? '' : 'required')
 }
