@@ -18,14 +18,28 @@
     <form method="POST" action="/app/rendicion">
       <input type="hidden" name="token" value="{{TOKEN}}" />
 
-      <label for="travelDate">Fecha del viaje</label>
-      <input type="date" id="travelDate" name="travelDate" value="{{TRAVEL_DATE}}" required />
+      <div class="field-row">
+        <div>
+          <label for="travelDateFrom">Fecha desde</label>
+          <input type="date" id="travelDateFrom" name="travelDateFrom" value="{{TRAVEL_DATE_FROM}}" required />
+        </div>
+        <div>
+          <label for="travelDateTo">Fecha hasta</label>
+          <input type="date" id="travelDateTo" name="travelDateTo" value="{{TRAVEL_DATE_TO}}" required />
+        </div>
+      </div>
 
-      <label for="origin">Origen</label>
-      <input type="text" id="origin" name="origin" value="{{ORIGIN}}" required autocomplete="off" />
+      <label>Origen</label>
+      <p class="readonly-info">{{ORIGIN_LABEL}}</p>
 
-      <label for="destination">Destino</label>
-      <input type="text" id="destination" name="destination" value="{{DESTINATION}}" required autocomplete="off" />
+      <label for="destinationProvinceCode">Provincia de destino</label>
+      <select id="destinationProvinceCode" name="destinationProvinceCode" required>
+        <option value="">Seleccionar...</option>
+        {{PROVINCE_OPTIONS}}
+      </select>
+
+      <label for="destinationCity">Ciudad de destino</label>
+      <input type="text" id="destinationCity" name="destinationCity" value="{{DESTINATION_CITY}}" required autocomplete="off" />
 
       <label for="details">Detalle (opcional)</label>
       <input type="text" id="details" name="details" value="{{DETAILS}}" autocomplete="off" />
