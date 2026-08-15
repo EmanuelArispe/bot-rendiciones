@@ -169,6 +169,7 @@ model Expense {
   
   // Tipo de gasto
   type            ExpenseType // COMBUSTIBLE, MANTENIMIENTO, PEAJE, etc
+  expenseDate     DateTime  // Cuándo ocurrió el gasto (no confundir con createdAt)
   description     String    // ej: "Cambio de aceite"
   
   // Datos económicos
@@ -205,6 +206,7 @@ model Expense {
   @@index([userId])
   @@index([rendicionId])
   @@index([type])
+  @@index([expenseDate])
 }
 
 enum ExpenseType {
