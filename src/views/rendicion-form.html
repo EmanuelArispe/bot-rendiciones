@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cargar Rendición - Bot Rendiciones</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <div class="card">
+    <h1>🧾 Cargar rendición</h1>
+    <p class="subtitle">
+      Los kilómetros se completan más adelante de forma automática.
+    </p>
+
+    {{ERROR}}
+
+    <form method="POST" action="/app/rendicion">
+      <input type="hidden" name="token" value="{{TOKEN}}" />
+
+      <label for="travelDate">Fecha del viaje</label>
+      <input type="date" id="travelDate" name="travelDate" value="{{TRAVEL_DATE}}" required />
+
+      <label for="origin">Origen</label>
+      <input type="text" id="origin" name="origin" value="{{ORIGIN}}" required autocomplete="off" />
+
+      <label for="destination">Destino</label>
+      <input type="text" id="destination" name="destination" value="{{DESTINATION}}" required autocomplete="off" />
+
+      <label for="details">Detalle (opcional)</label>
+      <input type="text" id="details" name="details" value="{{DETAILS}}" autocomplete="off" />
+
+      <button type="submit">Guardar rendición</button>
+    </form>
+
+    <a class="back-link" href="/app?token={{TOKEN}}">← Volver al menú</a>
+  </div>
+</body>
+</html>
