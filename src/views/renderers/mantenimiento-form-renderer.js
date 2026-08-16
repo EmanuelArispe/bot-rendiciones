@@ -25,11 +25,10 @@ function renderPaymentMethodOptions(selected) {
     .join('')
 }
 
-export async function renderMantenimientoForm({ token, values = {}, error = '' }) {
+export async function renderMantenimientoForm({ values = {}, error = '' }) {
   const html = await fs.readFile(formPath, 'utf8')
 
   return html
-    .replaceAll('{{TOKEN}}', escapeHtml(token))
     .replaceAll('{{ERROR}}', error ? `<div class="error">${escapeHtml(error)}</div>` : '')
     .replaceAll('{{DATE}}', escapeHtml(values.date))
     .replaceAll('{{DESCRIPTION}}', escapeHtml(values.description))

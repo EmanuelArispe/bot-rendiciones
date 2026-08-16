@@ -13,7 +13,6 @@ function fieldStatus(error, ok) {
 }
 
 export async function renderCredentialForm({
-  token,
   user,
   values = {},
   error = '',
@@ -28,7 +27,6 @@ export async function renderCredentialForm({
   const resolvedCompanyOk = companyOk ?? user.companyCredentialsStatus === 'ACTIVE'
 
   return html
-    .replaceAll('{{TOKEN}}', escapeHtml(token))
     .replaceAll('{{ERROR}}', error ? `<div class="error">${escapeHtml(error)}</div>` : '')
     .replaceAll('{{GPS_USERNAME}}', escapeHtml(values.gpsUsername ?? user.gpsUsername))
     .replaceAll('{{COMPANY_USERNAME}}', escapeHtml(values.companyUsername ?? user.companyUsername))

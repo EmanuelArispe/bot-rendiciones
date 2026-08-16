@@ -16,14 +16,13 @@ function renderProvinceOptions(selectedCode) {
   ).join('')
 }
 
-export async function renderRendicionForm({ token, user, values = {}, error = '' }) {
+export async function renderRendicionForm({ user, values = {}, error = '' }) {
   const html = await fs.readFile(formPath, 'utf8')
 
   const originProvinceCode = values.originProvinceCode ?? user.originProvinceCode ?? ''
   const originCity = values.originCity ?? user.originCity ?? ''
 
   return html
-    .replaceAll('{{TOKEN}}', escapeHtml(token))
     .replaceAll('{{ERROR}}', error ? `<div class="error">${escapeHtml(error)}</div>` : '')
     .replaceAll('{{TRAVEL_DATE_FROM}}', escapeHtml(values.travelDateFrom))
     .replaceAll('{{TRAVEL_DATE_TO}}', escapeHtml(values.travelDateTo))

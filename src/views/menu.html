@@ -12,10 +12,14 @@
     <p class="subtitle">¿Qué querés hacer?</p>
 
     <ul class="menu">
-      <li><a href="/app/rendicion?token={{TOKEN}}">🧾 Cargar rendición</a></li>
-      <li><a href="/app/mantenimiento?token={{TOKEN}}">🔧 Cargar mantenimiento</a></li>
-      <li><a href="/app/credenciales?token={{TOKEN}}">🔐 Mis credenciales</a></li>
+      <li><a href="/app/rendicion">🧾 Cargar rendición</a></li>
+      <li><a href="/app/mantenimiento">🔧 Cargar mantenimiento</a></li>
+      <li><a href="/app/credenciales">🔐 Mis credenciales</a></li>
+      <li><a href="/app/cambiar-password">🔑 Cambiar contraseña</a></li>
+      {{ADMIN_MENU_ITEM}}
     </ul>
+
+    <a class="back-link" href="/logout">Cerrar sesión</a>
   </div>
 </body>
 </html>

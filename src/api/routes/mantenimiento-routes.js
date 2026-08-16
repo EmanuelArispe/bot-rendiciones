@@ -39,10 +39,10 @@ function handleUpload(req, res, next) {
 const router = Router()
 
 router.get('/app/mantenimiento', requireUser, async (req, res) => {
-  res.type('html').send(await renderMantenimientoForm({ token: req.token }))
+  res.type('html').send(await renderMantenimientoForm({}))
 })
 
-router.post('/app/mantenimiento', handleUpload, requireUser, async (req, res) => {
+router.post('/app/mantenimiento', requireUser, handleUpload, async (req, res) => {
   const { date, description, amount, paymentMethod } = req.body || {}
   const values = { date, description, amount, paymentMethod }
 
@@ -59,7 +59,7 @@ router.post('/app/mantenimiento', handleUpload, requireUser, async (req, res) =>
       renderMessagePage({
         title: 'Listo',
         heading: '✅ Mantenimiento guardado',
-        body: `<a class="back-link" href="/app?token=${req.token}">← Volver al menú</a>`,
+        body: `<a class="back-link" href="/app">← Volver al menú</a>`,
       })
     )
   } catch (error) {
@@ -67,7 +67,7 @@ router.post('/app/mantenimiento', handleUpload, requireUser, async (req, res) =>
     res
       .status(400)
       .type('html')
-      .send(await renderMantenimientoForm({ token: req.token, values, error: error.message }))
+      .send(await renderMantenimientoForm({ values, error: error.message }))
   }
 })
 

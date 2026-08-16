@@ -40,7 +40,7 @@ async function validateWhicheverIsNeeded(needsGps, needsCompany, credentials) {
 }
 
 router.get('/app/credenciales', requireUser, async (req, res) => {
-  res.type('html').send(await renderCredentialForm({ token: req.token, user: req.user }))
+  res.type('html').send(await renderCredentialForm({ user: req.user }))
 })
 
 router.post('/app/credenciales', requireUser, async (req, res) => {
@@ -59,7 +59,6 @@ router.post('/app/credenciales', requireUser, async (req, res) => {
       .type('html')
       .send(
         await renderCredentialForm({
-          token: req.token,
           user: req.user,
           values,
           error: 'Completá usuario y contraseña de GPS.',
@@ -73,7 +72,6 @@ router.post('/app/credenciales', requireUser, async (req, res) => {
       .type('html')
       .send(
         await renderCredentialForm({
-          token: req.token,
           user: req.user,
           values,
           error: 'Completá usuario y contraseña de la empresa.',
@@ -113,14 +111,13 @@ router.post('/app/credenciales', requireUser, async (req, res) => {
         renderMessagePage({
           title: 'Listo',
           heading: '✅ Credenciales guardadas',
-          body: `Tus credenciales quedaron activas. <a class="back-link" href="/app?token=${req.token}">← Volver al menú</a>`,
+          body: `Tus credenciales quedaron activas. <a class="back-link" href="/app">← Volver al menú</a>`,
         })
       )
     }
 
     res.status(400).type('html').send(
       await renderCredentialForm({
-        token: req.token,
         user: req.user,
         values,
         gpsError: result.errors.gps,
@@ -134,7 +131,7 @@ router.post('/app/credenciales', requireUser, async (req, res) => {
     res
       .status(400)
       .type('html')
-      .send(await renderCredentialForm({ token: req.token, user: req.user, values, error: error.message }))
+      .send(await renderCredentialForm({ user: req.user, values, error: error.message }))
   }
 })
 
