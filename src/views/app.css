@@ -174,3 +174,12 @@ button:hover {
 .back-link:hover {
   color: #e2e8f0;
 }
+
+.page-links {
+  display: flex;
+  justify-content: space-between;
+}
+
+.page-links .back-link {
+  margin-top: 0;
+}
