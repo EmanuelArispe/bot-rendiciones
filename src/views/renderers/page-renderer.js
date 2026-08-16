@@ -28,6 +28,6 @@ export function renderErrorPage(message) {
   return renderMessagePage({
     title: 'Error',
     heading: `⚠️ ${escapeHtml(message)}`,
-    body: 'Revisá el link que te compartieron.',
+    body: '<a class="back-link" href="/app">← Volver al menú</a>',
   })
 }
