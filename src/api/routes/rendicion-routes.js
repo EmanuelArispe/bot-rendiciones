@@ -34,13 +34,18 @@ router.post('/app/rendicion', requireUser, asyncHandler(async (req, res) => {
   }
 
   try {
-    await createRendicion(req.user, values)
+    const rendicion = await createRendicion(req.user, values)
+
+    const body =
+      rendicion.kilometers != null
+        ? `Distancia detectada automáticamente por GPS: ${rendicion.kilometers} km. <a class="back-link" href="/app">← Volver al menú</a>`
+        : `Queda pendiente hasta que se complete el kilometraje. <a class="back-link" href="/app">← Volver al menú</a>`
 
     res.type('html').send(
       renderMessagePage({
         title: 'Listo',
         heading: '✅ Rendición guardada',
-        body: `Queda pendiente hasta que se complete el kilometraje. <a class="back-link" href="/app">← Volver al menú</a>`,
+        body,
       })
     )
   } catch (error) {
