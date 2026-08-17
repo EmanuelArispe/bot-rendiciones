@@ -15,6 +15,7 @@ import {
   validateCredentialsAgainstAPIs,
 } from '../../utils/credential-validator.js'
 import { requireUser } from '../middleware/require-user.js'
+import { asyncHandler } from '../middleware/async-handler.js'
 import { renderCredentialForm } from '../../views/renderers/credential-form-renderer.js'
 import { renderMessagePage } from '../../views/renderers/page-renderer.js'
 import logger from '../../utils/logger.js'
@@ -39,11 +40,11 @@ async function validateWhicheverIsNeeded(needsGps, needsCompany, credentials) {
   return { valid: true, errors: {} }
 }
 
-router.get('/app/credenciales', requireUser, async (req, res) => {
+router.get('/app/credenciales', requireUser, asyncHandler(async (req, res) => {
   res.type('html').send(await renderCredentialForm({ user: req.user }))
-})
+}))
 
-router.post('/app/credenciales', requireUser, async (req, res) => {
+router.post('/app/credenciales', requireUser, asyncHandler(async (req, res) => {
   const { gpsUsername, gpsPassword, companyUsername, companyPassword } = req.body || {}
   const values = { gpsUsername, companyUsername }
 
@@ -133,6 +134,6 @@ router.post('/app/credenciales', requireUser, async (req, res) => {
       .type('html')
       .send(await renderCredentialForm({ user: req.user, values, error: error.message }))
   }
-})
+}))
 
 export default router

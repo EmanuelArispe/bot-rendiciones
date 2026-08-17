@@ -1,11 +1,12 @@
 import { Router } from 'express'
 import { requireUser } from '../middleware/require-user.js'
+import { asyncHandler } from '../middleware/async-handler.js'
 import { renderMenu } from '../../views/renderers/menu-renderer.js'
 
 const router = Router()
 
-router.get('/app', requireUser, async (req, res) => {
+router.get('/app', requireUser, asyncHandler(async (req, res) => {
   res.type('html').send(await renderMenu({ user: req.user }))
-})
+}))
 
 export default router
