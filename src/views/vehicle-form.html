@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi Vehículo - Bot Rendiciones</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <div class="card">
+    <h1>🚗 Mi vehículo</h1>
+    <p class="subtitle">Se usa para buscar tus kilómetros en el GPS.</p>
+
+    {{ERROR}}
+    {{SUCCESS}}
+
+    <form method="POST" action="/app/vehiculo">
+      <label for="vehicleId">Patente</label>
+      <input type="text" id="vehicleId" name="vehicleId" value="{{VEHICLE_ID}}" required />
+
+      <label for="vehicleModel">Modelo (opcional)</label>
+      <input type="text" id="vehicleModel" name="vehicleModel" value="{{VEHICLE_MODEL}}" placeholder="ej: VW Amarok Confortline V6 2018" />
+
+      <button type="submit">Guardar</button>
+    </form>
+
+    <div class="page-links">
+      <a class="back-link" href="/app">← Volver al menú</a>
+      <a class="back-link" href="/logout">Cerrar sesión</a>
+    </div>
+  </div>
+</body>
+</html>
