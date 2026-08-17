@@ -68,6 +68,22 @@ export async function changePassword(userId, currentPassword, newPassword) {
   }
 }
 
+export async function updateVehicle(userId, { vehicleId, vehicleModel }) {
+  if (!vehicleId?.trim()) {
+    throw new ValidationError('La patente es obligatoria')
+  }
+
+  try {
+    return await userRepository.update(userId, {
+      // En mayúsculas: el GPS scraper matchea la patente contra el DOM por texto exacto
+      vehicleId: vehicleId.trim().toUpperCase(),
+      vehicleModel: vehicleModel?.trim() || null,
+    })
+  } catch (error) {
+    throw new DatabaseError('No se pudo guardar el vehículo', { userId, cause: error.message })
+  }
+}
+
 export async function authenticate(email, password) {
   const user = await userRepository.findByEmail(email?.trim())
 
