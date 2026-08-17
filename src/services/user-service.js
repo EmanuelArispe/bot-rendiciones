@@ -86,6 +86,25 @@ export function getUserByAccessToken(token) {
   return userRepository.findByAccessToken(token)
 }
 
+export function getAllUsers() {
+  return userRepository.findAll()
+}
+
+export async function setUserActive(userId, isActive) {
+  const data = { isActive }
+
+  // Al desactivar, rota el accessToken para que cualquier cookie que ya tenga no siga sirviendo
+  if (!isActive) {
+    data.accessToken = generateAccessToken()
+  }
+
+  try {
+    return await userRepository.update(userId, data)
+  } catch (error) {
+    throw new DatabaseError('No se pudo actualizar el estado del usuario', { userId, cause: error.message })
+  }
+}
+
 export async function regenerateAccessToken(userId) {
   try {
     return await userRepository.update(userId, { accessToken: generateAccessToken() })

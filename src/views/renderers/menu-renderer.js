@@ -9,7 +9,7 @@ const menuPath = path.join(__dirname, '../menu.html')
 export async function renderMenu({ user }) {
   const html = await fs.readFile(menuPath, 'utf8')
   const greeting = user.firstName ? `Hola, ${user.firstName}` : 'Hola'
-  const adminMenuItem = user.isAdmin ? '<li><a href="/app/usuarios/nuevo">👤 Crear usuario</a></li>' : ''
+  const adminMenuItem = user.isAdmin ? '<li><a href="/app/usuarios">👥 Gestionar usuarios</a></li>' : ''
 
   return html
     .replaceAll('{{GREETING}}', escapeHtml(greeting))

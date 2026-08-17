@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usuarios - Bot Rendiciones</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <div class="card card-wide">
+    <h1>👥 Usuarios</h1>
+    <p class="subtitle">Alta y baja de cuentas.</p>
+
+    {{ERROR}}
+    {{SUCCESS}}
+
+    <a class="back-link" href="/app/usuarios/nuevo">+ Crear usuario</a>
+
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Nombre</th>
+          <th>Rol</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{USER_ROWS}}
+      </tbody>
+    </table>
+
+    <div class="page-links">
+      <a class="back-link" href="/app">← Volver al menú</a>
+      <a class="back-link" href="/logout">Cerrar sesión</a>
+    </div>
+  </div>
+</body>
+</html>

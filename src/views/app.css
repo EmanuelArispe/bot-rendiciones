@@ -18,6 +18,10 @@ body {
   box-sizing: border-box;
 }
 
+.card-wide {
+  max-width: 640px;
+}
+
 /* Páginas de un solo mensaje (error de token, éxito del setup) */
 .card-message {
   text-align: center;
@@ -182,4 +186,38 @@ button:hover {
 
 .page-links .back-link {
   margin-top: 0;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 0.85rem;
+}
+
+.users-table th,
+.users-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid #334155;
+}
+
+.users-table td form {
+  margin: 0;
+}
+
+.users-table button {
+  width: auto;
+  margin-top: 0;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.danger-button {
+  background: #b91c1c;
+  color: #fecaca;
+}
+
+.danger-button:hover {
+  background: #991b1b;
 }
