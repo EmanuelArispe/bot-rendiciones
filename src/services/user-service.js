@@ -14,6 +14,10 @@ function generateAccessToken() {
   return crypto.randomBytes(32).toString('hex')
 }
 
+function generateTemporaryPassword() {
+  return crypto.randomBytes(9).toString('base64url')
+}
+
 export async function createUser({ email, password, firstName, lastName, isAdmin = false } = {}) {
   if (!email?.trim()) {
     throw new ValidationError('El email es obligatorio')
@@ -102,6 +106,28 @@ export async function setUserActive(userId, isActive) {
     return await userRepository.update(userId, data)
   } catch (error) {
     throw new DatabaseError('No se pudo actualizar el estado del usuario', { userId, cause: error.message })
+  }
+}
+
+export async function resetPassword(userId) {
+  const user = await userRepository.findById(userId)
+
+  if (!user) {
+    throw new ValidationError('Usuario inválido')
+  }
+
+  const temporaryPassword = generateTemporaryPassword()
+
+  try {
+    const updatedUser = await userRepository.update(userId, {
+      passwordHash: await bcrypt.hash(temporaryPassword, BCRYPT_ROUNDS),
+      // Rota el accessToken para cerrar cualquier sesión abierta con la contraseña anterior
+      accessToken: generateAccessToken(),
+    })
+
+    return { user: updatedUser, temporaryPassword }
+  } catch (error) {
+    throw new DatabaseError('No se pudo resetear la contraseña', { userId, cause: error.message })
   }
 }
 
