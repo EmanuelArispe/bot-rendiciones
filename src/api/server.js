@@ -13,6 +13,8 @@ import rendicionRoutes from './routes/rendicion-routes.js'
 import mantenimientoRoutes from './routes/mantenimiento-routes.js'
 import adminRoutes from './routes/admin-routes.js'
 import profileRoutes from './routes/profile-routes.js'
+import { AppError, logAppError } from '../utils/error-handler.js'
+import { renderErrorPage } from '../views/renderers/page-renderer.js'
 import logger from '../utils/logger.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -33,6 +35,16 @@ export function createServer() {
   app.use('/', mantenimientoRoutes)
   app.use('/', adminRoutes)
   app.use('/', profileRoutes)
+
+  // eslint-disable-next-line no-unused-vars
+  app.use((error, req, res, next) => {
+    logAppError(error, { path: req.path, method: req.method })
+    const statusCode = error instanceof AppError ? error.statusCode : 500
+    res
+      .status(statusCode)
+      .type('html')
+      .send(renderErrorPage('Ocurrió un error inesperado. Probá de nuevo en unos segundos.'))
+  })
 
   return app
 }

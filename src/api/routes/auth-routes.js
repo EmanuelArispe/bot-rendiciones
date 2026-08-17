@@ -6,6 +6,7 @@ import {
   SESSION_COOKIE_OPTIONS,
   CLEAR_SESSION_COOKIE_OPTIONS,
 } from '../middleware/require-user.js'
+import { asyncHandler } from '../middleware/async-handler.js'
 import logger from '../../utils/logger.js'
 
 const router = Router()
@@ -15,19 +16,19 @@ async function isLoggedIn(req) {
   return token ? Boolean(await getUserByAccessToken(token)) : false
 }
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   res.redirect((await isLoggedIn(req)) ? '/app' : '/login')
-})
+}))
 
-router.get('/login', async (req, res) => {
+router.get('/login', asyncHandler(async (req, res) => {
   if (await isLoggedIn(req)) {
     return res.redirect('/app')
   }
 
   res.type('html').send(await renderLoginForm())
-})
+}))
 
-router.post('/login', async (req, res) => {
+router.post('/login', asyncHandler(async (req, res) => {
   const { email, password } = req.body || {}
 
   if (!email || !password) {
@@ -46,9 +47,9 @@ router.post('/login', async (req, res) => {
   res.cookie(SESSION_COOKIE_NAME, user.accessToken, SESSION_COOKIE_OPTIONS)
   logger.info(`[AUTH] Login exitoso: usuario ${user.id}`)
   res.redirect('/app')
-})
+}))
 
-router.get('/logout', async (req, res) => {
+router.get('/logout', asyncHandler(async (req, res) => {
   const token = req.signedCookies?.[SESSION_COOKIE_NAME]
 
   if (token) {
@@ -61,6 +62,6 @@ router.get('/logout', async (req, res) => {
 
   res.clearCookie(SESSION_COOKIE_NAME, CLEAR_SESSION_COOKIE_OPTIONS)
   res.redirect('/login')
-})
+}))
 
 export default router
