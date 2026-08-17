@@ -26,13 +26,17 @@ export const SELECTORS = {
     LOGIN_USER: 'input[name="nick"]',
     LOGIN_PASSWORD: 'input[name="passwd"]',
     LOGIN_BUTTON: '#in',
-    VEHICLE_LIST: '.vehicle-list',
-    VEHICLE_ITEM: '.vehicle-item',
-    DATE_FROM: 'input[name="dateFrom"]',
-    DATE_TO: 'input[name="dateTo"]',
-    VIEW_ROUTE_BUTTON: 'button:contains("Ver recorrido")',
-    DISTANCE_FIELD: 'text:contains("Distancia:")',
-    KM_VALUE: '.distance-value',
+    // Tab "Recorridos" del menú (navegación por JS, no recarga la página)
+    RECORRIDOS_TAB: 'li.recorridos a',
+    // Cada vehículo es una fila con la patente en su 4to <td> y un checkbox para elegirlo
+    VEHICLE_ROW: 'tr.rowVehicleR',
+    VEHICLE_PLATE_CELL: 'td:nth-child(4)',
+    VEHICLE_CHECKBOX: 'input.IdVehiculoRecorrido',
+    DATE_FROM: '#FechaIni', // formato YYYY/MM/DD
+    DATE_TO: '#FechaFin', // formato YYYY/MM/DD
+    VIEW_ROUTE_BUTTON: '#btnVerRecorridos',
+    // Texto tipo "147.07 km" seguido de un <span> anidado ("software"/"gps")
+    DISTANCE_FIELD: '#distRecor',
   },
 
   // EMPRESA (La Segunda) - login vía SSO Keycloak, verificado contra el DOM real
