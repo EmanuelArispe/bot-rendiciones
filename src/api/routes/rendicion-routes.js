@@ -8,7 +8,7 @@ import logger from '../../utils/logger.js'
 const router = Router()
 
 router.get('/app/rendicion', requireUser, async (req, res) => {
-  res.type('html').send(await renderRendicionForm({ token: req.token, user: req.user }))
+  res.type('html').send(await renderRendicionForm({ user: req.user }))
 })
 
 router.post('/app/rendicion', requireUser, async (req, res) => {
@@ -39,7 +39,7 @@ router.post('/app/rendicion', requireUser, async (req, res) => {
       renderMessagePage({
         title: 'Listo',
         heading: '✅ Rendición guardada',
-        body: `Queda pendiente hasta que se complete el kilometraje. <a class="back-link" href="/app?token=${req.token}">← Volver al menú</a>`,
+        body: `Queda pendiente hasta que se complete el kilometraje. <a class="back-link" href="/app">← Volver al menú</a>`,
       })
     )
   } catch (error) {
@@ -47,7 +47,7 @@ router.post('/app/rendicion', requireUser, async (req, res) => {
     res
       .status(400)
       .type('html')
-      .send(await renderRendicionForm({ token: req.token, user: req.user, values, error: error.message }))
+      .send(await renderRendicionForm({ user: req.user, values, error: error.message }))
   }
 })
 

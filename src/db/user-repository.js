@@ -19,3 +19,7 @@ export function findByEmail(email) {
 export function update(id, data) {
   return prisma.user.update({ where: { id }, data })
 }
+
+export function findAll() {
+  return prisma.user.findMany({ orderBy: { email: 'asc' } })
+}

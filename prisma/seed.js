@@ -1,8 +1,11 @@
 import crypto from 'crypto'
+import bcrypt from 'bcrypt'
 import { PrismaClient } from '@prisma/client'
 import { encrypt } from '../src/utils/crypto.js'
 
 const prisma = new PrismaClient()
+
+const SEED_PASSWORD = 'password123'
 
 async function main() {
   console.log('🌱 Iniciando seed de datos...')
@@ -17,6 +20,7 @@ async function main() {
   const user = await prisma.user.create({
     data: {
       email: 'emanuel@example.com',
+      passwordHash: await bcrypt.hash(SEED_PASSWORD, 10),
       firstName: 'Emanuel',
       lastName: 'Perez',
       vehicleId: 'AC767UI',
@@ -25,6 +29,7 @@ async function main() {
       originProvince: 'BUENOS AIRES',
       originCity: 'Tandil',
       isActive: true,
+      isAdmin: true,
       accessToken: crypto.randomBytes(32).toString('hex'),
       gpsUsername: 'emanuelprueba',
       gpsPasswordEncrypted: encrypt('gps_password_123'),
@@ -118,7 +123,7 @@ async function main() {
   console.log(`   - Logs: 1`)
   console.log('\n💡 Datos de prueba:')
   console.log(`   Email: ${user.email}`)
-  console.log(`   Access token: ${user.accessToken}`)
+  console.log(`   Contraseña: ${SEED_PASSWORD}`)
   console.log(`   GPS Username: ${user.gpsUsername}`)
   console.log(`   Company Username: ${user.companyUsername}`)
   console.log('\n⚠️  Nota: Las contraseñas están cifradas (AES-256-GCM), no en texto plano.')

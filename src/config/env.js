@@ -93,6 +93,7 @@ export function loadEnv() {
     // Seguridad
     security: {
       encryptionKey: getEnvVar('ENCRYPTION_KEY'),
+      sessionSecret: getEnvVar('SESSION_SECRET'),
     },
   }
 
@@ -107,6 +108,8 @@ export function validateEnv() {
   const criticalVars = [
     'DATABASE_URL',
     'PUPPETEER_TIMEOUT',
+    'SESSION_SECRET',
+    'ENCRYPTION_KEY',
   ]
 
   const missing = criticalVars.filter((v) => !process.env[v])

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crear Usuario - Bot Rendiciones</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <div class="card">
+    <h1>👤 Crear usuario</h1>
+    <p class="subtitle">Solo vos, como admin, podés dar de alta cuentas nuevas.</p>
+
+    {{ERROR}}
+    {{SUCCESS}}
+
+    <form method="POST" action="/app/usuarios/nuevo">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{EMAIL}}" required autocomplete="off" />
+
+      <label for="firstName">Nombre</label>
+      <input type="text" id="firstName" name="firstName" value="{{FIRST_NAME}}" autocomplete="off" />
+
+      <label for="lastName">Apellido</label>
+      <input type="text" id="lastName" name="lastName" value="{{LAST_NAME}}" autocomplete="off" />
+
+      <label for="password">Contraseña inicial</label>
+      <input type="password" id="password" name="password" required autocomplete="new-password" />
+
+      <label class="checkbox-label" for="isAdmin">
+        <input type="checkbox" id="isAdmin" name="isAdmin" value="true" {{IS_ADMIN_CHECKED}} />
+        Es administrador
+      </label>
+
+      <button type="submit">Crear usuario</button>
+    </form>
+
+    <div class="page-links">
+      <a class="back-link" href="/app">← Volver al menú</a>
+      <a class="back-link" href="/logout">Cerrar sesión</a>
+    </div>
+  </div>
+</body>
+</html>
