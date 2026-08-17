@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { requireUser } from '../middleware/require-user.js'
 import { requireAdmin } from '../middleware/require-admin.js'
+import { asyncHandler } from '../middleware/async-handler.js'
 import { createUser, getAllUsers, setUserActive } from '../../services/user-service.js'
 import { renderCreateUserForm } from '../../views/renderers/create-user-form-renderer.js'
 import { renderUsersList } from '../../views/renderers/users-list-renderer.js'
@@ -8,16 +9,16 @@ import logger from '../../utils/logger.js'
 
 const router = Router()
 
-router.get('/app/usuarios', requireUser, requireAdmin, async (req, res) => {
+router.get('/app/usuarios', requireUser, requireAdmin, asyncHandler(async (req, res) => {
   const users = await getAllUsers()
   res.type('html').send(await renderUsersList({ users, currentUserId: req.user.id }))
-})
+}))
 
-router.get('/app/usuarios/nuevo', requireUser, requireAdmin, async (req, res) => {
+router.get('/app/usuarios/nuevo', requireUser, requireAdmin, asyncHandler(async (req, res) => {
   res.type('html').send(await renderCreateUserForm())
-})
+}))
 
-router.post('/app/usuarios/nuevo', requireUser, requireAdmin, async (req, res) => {
+router.post('/app/usuarios/nuevo', requireUser, requireAdmin, asyncHandler(async (req, res) => {
   const { email, password, firstName, lastName, isAdmin } = req.body || {}
   const values = { email, firstName, lastName, isAdmin: isAdmin === 'true' }
 
@@ -31,9 +32,9 @@ router.post('/app/usuarios/nuevo', requireUser, requireAdmin, async (req, res) =
     logger.error('[ADMIN_ROUTES] Error en POST /app/usuarios/nuevo', { error: error.message })
     res.status(400).type('html').send(await renderCreateUserForm({ values, error: error.message }))
   }
-})
+}))
 
-router.post('/app/usuarios/:id/desactivar', requireUser, requireAdmin, async (req, res) => {
+router.post('/app/usuarios/:id/desactivar', requireUser, requireAdmin, asyncHandler(async (req, res) => {
   const targetId = Number(req.params.id)
 
   if (targetId === req.user.id) {
@@ -52,9 +53,9 @@ router.post('/app/usuarios/:id/desactivar', requireUser, requireAdmin, async (re
 
   const users = await getAllUsers()
   res.type('html').send(await renderUsersList({ users, currentUserId: req.user.id }))
-})
+}))
 
-router.post('/app/usuarios/:id/activar', requireUser, requireAdmin, async (req, res) => {
+router.post('/app/usuarios/:id/activar', requireUser, requireAdmin, asyncHandler(async (req, res) => {
   const targetId = Number(req.params.id)
 
   try {
@@ -65,6 +66,6 @@ router.post('/app/usuarios/:id/activar', requireUser, requireAdmin, async (req, 
 
   const users = await getAllUsers()
   res.type('html').send(await renderUsersList({ users, currentUserId: req.user.id }))
-})
+}))
 
 export default router

@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireUser } from '../middleware/require-user.js'
+import { asyncHandler } from '../middleware/async-handler.js'
 import { createRendicion } from '../../services/rendicion-service.js'
 import { renderRendicionForm } from '../../views/renderers/rendicion-form-renderer.js'
 import { renderMessagePage } from '../../views/renderers/page-renderer.js'
@@ -7,11 +8,11 @@ import logger from '../../utils/logger.js'
 
 const router = Router()
 
-router.get('/app/rendicion', requireUser, async (req, res) => {
+router.get('/app/rendicion', requireUser, asyncHandler(async (req, res) => {
   res.type('html').send(await renderRendicionForm({ user: req.user }))
-})
+}))
 
-router.post('/app/rendicion', requireUser, async (req, res) => {
+router.post('/app/rendicion', requireUser, asyncHandler(async (req, res) => {
   const {
     travelDateFrom,
     travelDateTo,
@@ -49,6 +50,6 @@ router.post('/app/rendicion', requireUser, async (req, res) => {
       .type('html')
       .send(await renderRendicionForm({ user: req.user, values, error: error.message }))
   }
-})
+}))
 
 export default router

@@ -1,4 +1,5 @@
 import { getUserByAccessToken } from '../../services/user-service.js'
+import { asyncHandler } from './async-handler.js'
 
 export const SESSION_COOKIE_NAME = 'session'
 
@@ -16,7 +17,7 @@ export const SESSION_COOKIE_OPTIONS = {
 
 export const CLEAR_SESSION_COOKIE_OPTIONS = SHARED_COOKIE_ATTRIBUTES
 
-export async function requireUser(req, res, next) {
+export const requireUser = asyncHandler(async function requireUser(req, res, next) {
   const token = req.signedCookies?.[SESSION_COOKIE_NAME]
 
   if (!token) {
@@ -32,4 +33,4 @@ export async function requireUser(req, res, next) {
 
   req.user = user
   next()
-}
+})
