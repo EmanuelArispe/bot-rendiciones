@@ -18,6 +18,7 @@ function renderRow(user, currentUserId) {
     action = user.isActive
       ? `<form method="POST" action="/app/usuarios/${user.id}/desactivar"><button type="submit" class="danger-button">Desactivar</button></form>`
       : `<form method="POST" action="/app/usuarios/${user.id}/activar"><button type="submit">Activar</button></form>`
+    action += `<form method="POST" action="/app/usuarios/${user.id}/resetear-password" onsubmit="return confirm('¿Resetear la contraseña de este usuario?')"><button type="submit">Resetear contraseña</button></form>`
   }
 
   return `<tr>

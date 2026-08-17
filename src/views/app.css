@@ -206,6 +206,10 @@ button:hover {
   margin: 0;
 }
 
+.users-table td form + form {
+  margin-top: 6px;
+}
+
 .users-table button {
   width: auto;
   margin-top: 0;
