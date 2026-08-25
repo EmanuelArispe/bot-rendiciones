@@ -11,7 +11,13 @@ export async function renderMenu({ user }) {
   const greeting = user.firstName ? `Hola, ${user.firstName}` : 'Hola'
   const adminMenuItem = user.isAdmin ? '<li><a href="/app/usuarios">👥 Gestionar usuarios</a></li>' : ''
 
+  const gpsWarning =
+    user.gpsCredentialsStatus === 'INVALID_CREDENTIALS'
+      ? '<p class="warning">⚠️ Tus credenciales de GPS dejaron de funcionar, así que el kilometraje no se está completando solo. <a href="/app/credenciales">Actualizalas acá</a>.</p>'
+      : ''
+
   return html
     .replaceAll('{{GREETING}}', escapeHtml(greeting))
     .replaceAll('{{ADMIN_MENU_ITEM}}', adminMenuItem)
+    .replaceAll('{{GPS_WARNING}}', gpsWarning)
 }

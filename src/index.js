@@ -9,6 +9,7 @@ import { dirname, resolve } from 'path'
 import logger from './utils/logger.js'
 import { loadEnv, validateEnv } from './config/env.js'
 import { startServer } from './api/server.js'
+import { startGpsRetryJob } from './jobs/gps-retry-job.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -23,6 +24,7 @@ async function main() {
     validateEnv()
 
     await startServer(process.env.PORT || 3000)
+    startGpsRetryJob()
 
     logger.info('✅ App iniciada exitosamente')
   } catch (error) {
