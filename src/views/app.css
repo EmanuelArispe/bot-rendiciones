@@ -119,6 +119,21 @@ button:hover {
   font-size: 0.85rem;
 }
 
+.warning {
+  background: #451a03;
+  border: 1px solid #b45309;
+  color: #fde68a;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+}
+
+.warning a {
+  color: #fde68a;
+  text-decoration: underline;
+}
+
 .field-error,
 .field-ok {
   padding: 6px 10px;

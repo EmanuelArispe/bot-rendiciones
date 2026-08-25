@@ -1,68 +1,67 @@
-# 🤖 Bot de Rendición de Viaticos - CLAUDE.md
+# 🚗 App de Rendición de Viáticos - CLAUDE.md
 
-**Proyecto:** Automatización de rendición de viaticos y gastos de mantenimiento vehicular  
-**Autor:** Emanuel Perez  
-**Stack:** Node.js + whatsapp-web.js + Puppeteer + Tesseract.js + PostgreSQL (Docker)  
-**Estado:** Fase 1 - MVP Local (gestión de credenciales implementada; GPS/OCR/formulario empresa pendientes)  
-**Última actualización:** 10/08/2026
+**Proyecto:** Automatización de rendición de viáticos y gastos de mantenimiento vehicular
+**Autor:** Emanuel Perez
+**Stack:** Node.js + Express + Puppeteer + PostgreSQL (Docker) + Prisma
+**Estado:** Fase 1 - MVP Local (login web + credenciales + vehículo + GPS scraper implementados; formulario empresa/OCR pendientes)
+**Última actualización:** 25/08/2026
 
 ---
 
 ## 📋 VISIÓN GENERAL
 
-Bot WhatsApp que automatiza completamente la rendición de viaticos:
-- Usuario envía: fecha + localidad + foto factura
-- Bot extrae KMs del GPS automáticamente
-- Bot carga todo en formulario de empresa
-- Bot guarda histórico
-- Usuario verifica 1x/mes
+⚠️ **El proyecto arrancó pensado como bot de WhatsApp (ver el flujo original más abajo en "Historia"), pero hoy es una webapp de formularios con login propio.** No hay `whatsapp-web.js`, ni parser de mensajes, ni carpeta `src/bot/` en el código actual — eso quedó descartado. Este documento describe el estado real del código, no el plan original.
 
-**Ahorro:** De 40min a 5min por rendición
+Webapp que automatiza la rendición de viáticos:
+- Usuario se loguea, completa un formulario de rendición (fechas + origen/destino)
+- La app extrae los KMs recorridos desde el GPS de la empresa automáticamente (Puppeteer)
+- Usuario carga gastos de mantenimiento con foto de comprobante (sin OCR todavía, monto manual)
+- Queda un histórico en PostgreSQL
+- Pendiente: cargar todo eso en el formulario de la empresa (La Segunda) automáticamente
 
 ---
 
-## 🔄 FLUJO DEL BOT (End-to-End)
+## 🔄 FLUJO ACTUAL (End-to-End)
 
 ```
-0️⃣  SETUP DE CREDENCIALES (una sola vez, ✅ implementado)
-    Usuario escribe "setup-credentials" → bot genera link (15 min)
-    → formulario valida GPS + Empresa UNA VEZ contra las APIs reales
-    → si OK, guarda cifrado (AES-256-GCM). Ver "Skill 0" más abajo.
+0️⃣  LOGIN (✅ implementado)
+    Usuario entra a /login con email + contraseña (creados por un admin)
+    → cookie de sesión firmada (accessToken en tabla User)
 
-1️⃣  USUARIO ENVÍA POR WHATSAPP
-    "Viaje - 15/01 - Tandil - foto_factura.jpg"
-    
-2️⃣  BOT WHATSAPP-WEB.JS RECIBE
-    - Parsea: fecha, localidad, descarga foto
-    
-3️⃣  EXTRAE KMS DEL GPS (Puppeteer) — ⏳ pendiente de implementar
-    - Usa las credenciales guardadas (getCredentialsForBot)
-    - Login a: mapas.seguimientoglobal.com
-    - Selecciona vehículo
-    - Setea fechas
-    - Extrae valor de "Distancia: software"
-    - Retorna: 147.07 km
-    
-4️⃣  EXTRAE MONTO DE FOTO (Tesseract OCR)
-    - Analiza imagen de factura
-    - Identifica valor numérico
-    - Retorna: $850
-    
-5️⃣  CARGA EN FORMULARIO EMPRESA (Puppeteer)
-    - Login: app.lasegunda.com.ar
-    - Navega: Netpro → Tasadores → Rendición de Gastos
-    - Completa: Fechas, Origen, Destino, KM, Vehículo
-    - Agrega: Gasto de combustible ($850)
-    - Si hay: Gasto de mantenimiento
-    - Click: Confirmar Gestión
-    
-6️⃣  GUARDA EN BD LOCAL
-    - Histórico de rendición
-    - Logs de operación
-    - Foto almacenada
-    
-7️⃣  RESPONDE EN WHATSAPP
-    "✅ Cargado: $850, 147.07km, Tandil - 15/01/2026"
+1️⃣  SETUP DE CREDENCIALES GPS/EMPRESA (✅ implementado)
+    Usuario va a /app/credenciales, carga usuario/contraseña de GPS y de Empresa
+    → se valida con un login real (Puppeteer) contra mapas.seguimientoglobal.com
+      y el SSO de la empresa, UNA VEZ, antes de guardar
+    → si OK, se cifra (AES-256-GCM) y se guarda en User (gpsCredentialsStatus/
+      companyCredentialsStatus = ACTIVE)
+    → si falla, se rechaza con el error puntual, sin guardar nada
+
+2️⃣  CONFIGURAR VEHÍCULO (✅ implementado)
+    Usuario va a /app/vehiculo, carga la patente (se guarda en MAYÚSCULAS,
+    normalizada porque el GPS scraper matchea por texto exacto) y el modelo
+
+3️⃣  CARGAR RENDICIÓN (✅ implementado, best-effort)
+    Usuario va a /app/rendicion, completa fechas + origen/destino
+    → se guarda la rendición en BD (status PENDING, kilometers null)
+    → en background (sin bloquear la respuesta) se intenta completar el
+      kilometraje contra el GPS usando las credenciales guardadas (Skill GPS)
+    → si funciona: se actualiza kilometers/gpsRetrievedAt en esa misma rendición
+    → si falla (credenciales, timeout, vehículo no encontrado): la rendición
+      queda con kilometers null y un job periódico la vuelve a intentar
+      (ver Skill GPS más abajo)
+
+4️⃣  CARGAR MANTENIMIENTO (✅ implementado, sin OCR)
+    Usuario va a /app/mantenimiento, carga fecha + descripción + monto (a mano)
+    + método de pago + foto opcional del comprobante (se guarda en /downloads,
+    no se procesa con OCR todavía)
+
+5️⃣  CARGA EN FORMULARIO EMPRESA (⏳ no implementado)
+    No existe automatización de app.lasegunda.com.ar / Netpro / Rendición de
+    Gastos. Los datos quedan en la BD local nada más.
+
+6️⃣  ADMINISTRACIÓN (✅ implementado)
+    Un usuario con isAdmin=true puede, desde /app/usuarios: crear usuarios,
+    activar/desactivar, y resetear la contraseña de cualquier usuario
 ```
 
 ---
@@ -70,79 +69,89 @@ Bot WhatsApp que automatiza completamente la rendición de viaticos:
 ## 🛠️ STACK TECNOLÓGICO
 
 ### Core
-- **Node.js v22.22.2** - Runtime JavaScript
-- **Express.js** - Sirve el formulario web de setup de credenciales (`src/api/`)
+- **Node.js** (>=20) - Runtime JavaScript, ESM (`"type": "module"`)
+- **Express.js** - Toda la app es un servidor de formularios HTML server-rendered (no hay frontend separado, no hay API JSON)
 
 ### Automatización Web
-- **Puppeteer** - Control de navegador (validación de credenciales ✅; GPS + Formulario ⏳ pendientes)
-- **whatsapp-web.js** - Cliente WhatsApp (usa Puppeteer internamente para controlar WhatsApp Web)
-- **qrcode / qrcode-terminal** - Generación del QR de vinculación (terminal + archivo `qr.png`)
-- **Tesseract.js** - OCR (extrae montos) — ⏳ integración pendiente
+- **Puppeteer** - Login/validación de credenciales (✅) y GPS scraper (✅). Formulario de empresa (⏳ no existe)
+- **Tesseract.js** - Dependencia instalada, sin ninguna integración todavía (OCR de comprobantes pendiente)
 
 ### Base de Datos
 - **PostgreSQL** - Vía Docker Compose en desarrollo (`docker-compose.yml`, ver `docs/DOCKER_SETUP.md`)
-- **Prisma** - ORM + Migrations (versionado tipo Git)
+- **Prisma** - ORM + Migrations
 
 ### Utilidades
-- **Dotenv / dotenv-cli** - Variables de entorno (ver sección de env vars: viven en `env/`, no en la raíz)
-- **Axios** - HTTP requests
-- **Winston** - Logging profesional
-- **Joi** - Validación de datos
+- **Dotenv / dotenv-cli** - Variables de entorno (viven en `env/`, no en la raíz)
+- **cookie-parser** - Cookie de sesión firmada (login)
+- **Multer** - Upload de fotos de comprobantes (`mantenimiento-routes.js`)
+- **Winston (+ winston-daily-rotate-file)** - Logging
+- **Joi** - Instalado, sin uso visible todavía (la validación real está a mano en los `*-service.js`)
 - **Node `crypto` (AES-256-GCM)** - Cifrado reversible de credenciales GPS/Empresa (`src/utils/crypto.js`)
-- **Bcrypt** - Dependencia instalada, sin uso actual (las credenciales necesitan ser reversibles para loguear vía Puppeteer, así que no sirve un hash de una vía)
-- **Sharp** - Procesamiento de imágenes
+- **Bcrypt** - Hash de contraseñas de usuario (login de la app, no las credenciales de GPS/Empresa, que necesitan ser reversibles)
+- **Sharp / Axios** - Instaladas, sin uso confirmado todavía
 
 ---
 
-## 📁 ESTRUCTURA DEL PROYECTO
-
-Estado real (✅ implementado / ⏳ pendiente):
+## 📁 ESTRUCTURA DEL PROYECTO (real, no aspiracional)
 
 ```
 bot-rendiciones/
 ├── src/
-│   ├── bot/
-│   │   ├── whatsapp.js            # ✅ whatsapp-web.js - conexión + manejo de mensajes/comandos
-│   │   ├── message-parser.js      # ✅ Parsea: fecha, localidad, foto
-│   │   └── credential-manager.js  # ✅ Puente bot↔credential-service (setup-credentials, notif. de fallo)
+│   ├── api/
+│   │   ├── server.js                 # ✅ Setup de Express + middleware de error centralizado
+│   │   ├── middleware/
+│   │   │   ├── require-user.js       # ✅ Lee cookie de sesión, carga req.user o redirige a /login
+│   │   │   ├── require-admin.js      # ✅ Corta con 403 si req.user no es admin
+│   │   │   └── async-handler.js      # ✅ Envuelve handlers async → next(error) (evita crashear el proceso)
+│   │   └── routes/
+│   │       ├── auth-routes.js        # ✅ /, /login, /logout
+│   │       ├── menu-routes.js        # ✅ /app (menú principal)
+│   │       ├── credential-routes.js  # ✅ /app/credenciales (setup GPS/Empresa)
+│   │       ├── profile-routes.js     # ✅ /app/vehiculo, /app/cambiar-password
+│   │       ├── rendicion-routes.js   # ✅ /app/rendicion
+│   │       ├── mantenimiento-routes.js # ✅ /app/mantenimiento (+ upload de foto)
+│   │       └── admin-routes.js       # ✅ /app/usuarios (alta, activar/desactivar, resetear password)
 │   │
 │   ├── services/
-│   │   ├── credential-service.js  # ✅ Token de setup, guardado/lectura cifrada (AES-256-GCM)
-│   │   └── credential-audit.js    # ✅ Log de uso de credenciales (GPS/FORM) para debugging
+│   │   ├── user-service.js           # ✅ Alta/login/vehículo/reseteo de password
+│   │   ├── credential-service.js     # ✅ Guardar/leer credenciales cifradas, marcar inválidas
+│   │   ├── credential-audit.js       # ✅ Log de uso de credenciales (GPS/FORM)
+│   │   ├── rendicion-service.js      # ✅ Crear rendición + enriquecer con KMs del GPS (best-effort)
+│   │   └── expense-service.js        # ✅ Gastos de mantenimiento (sin OCR)
 │   │
-│   ├── api/
-│   │   ├── server.js              # ✅ Servidor Express (formulario de setup)
-│   │   └── routes/
-│   │       └── credential-routes.js # ✅ GET /setup, POST /setup/validate
+│   ├── jobs/                         # ⏳ No existe todavía (ver Skill GPS: reintento pendiente)
+│   │   └── gps-retry-job.js          # Reintenta el kilometraje de rendiciones que quedaron sin GPS
 │   │
-│   ├── views/
-│   │   └── credential-form.html   # ✅ Formulario web de setup de credenciales
+│   ├── automation/
+│   │   └── gps-scraper.js            # ✅ Puppeteer → login GPS, selecciona vehículo, extrae KMs
+│   │   # company-form.js             # ⏳ No existe (formulario de empresa)
 │   │
 │   ├── db/
-│   │   └── prisma.js              # ✅ Cliente Prisma singleton
+│   │   ├── prisma.js                 # ✅ Cliente Prisma singleton
+│   │   ├── user-repository.js        # ✅
+│   │   ├── rendicion-repository.js   # ✅
+│   │   ├── expense-repository.js     # ✅
+│   │   └── credential-usage-repository.js # ✅
 │   │
-│   ├── automation/                # ⏳ No existe todavía
-│   │   ├── gps-scraper.js         # Puppeteer → Extrae KMs
-│   │   ├── company-form.js        # Puppeteer → Completa formulario
-│   │   └── browser-pool.js        # Gestiona múltiples navegadores
-│   │
-│   ├── ocr/                       # ⏳ No existe todavía
-│   │   ├── invoice-parser.js      # Tesseract → OCR de facturas
-│   │   └── validators.js          # Valida montos extraídos
+│   ├── views/
+│   │   ├── app.css                   # ✅ Estilos compartidos de todos los formularios
+│   │   ├── menu.html                 # ✅ Template del menú principal
+│   │   └── renderers/                # ✅ Un renderer por página (arma el HTML a partir de templates + datos)
 │   │
 │   ├── utils/
-│   │   ├── logger.js              # ✅ Winston - logs
-│   │   ├── error-handler.js       # ✅ Errores + retryWithBackoff/withTimeout (no hay retry-logic.js separado)
-│   │   ├── crypto.js              # ✅ AES-256-GCM encrypt/decrypt (credenciales)
-│   │   └── credential-validator.js # ✅ Login real (1 vez) contra GPS/Empresa, usado solo en el setup
+│   │   ├── logger.js                 # ✅ Winston
+│   │   ├── error-handler.js          # ✅ AppError/GPSError/etc + retryWithBackoff/withTimeout
+│   │   ├── crypto.js                 # ✅ AES-256-GCM encrypt/decrypt
+│   │   └── credential-validator.js   # ✅ Login real (1 vez) contra GPS/Empresa, usado en /app/credenciales
 │   │
 │   ├── config/
-│   │   ├── env.js                 # ✅ Variables de entorno
-│   │   └── constants.js           # ✅ URLs, selectores Puppeteer, mensajes, timeouts
+│   │   ├── env.js                    # ✅ Carga y valida variables de entorno
+│   │   ├── constants.js              # ✅ URLs, selectores Puppeteer, timeouts, mensajes
+│   │   └── company-locations.js      # ✅ Provincias/códigos válidos para origen/destino
 │   │
-│   └── index.js                   # ✅ Entry point (arranca servidor HTTP + bot)
+│   └── index.js                      # ✅ Entry point (carga env, arranca servidor HTTP)
 │
-├── tests/                         # ⏳ Carpeta vacía, sin tests todavía
+├── tests/                            # ⏳ Carpeta vacía, sin tests todavía (hay script `npm test` armado)
 │
 ├── prisma/
 │   ├── schema.prisma
@@ -153,355 +162,172 @@ bot-rendiciones/
 │   ├── DATABASE_SETUP.md
 │   └── DOCKER_SETUP.md
 │
-├── sessions/                     # Datos de sesión whatsapp-web.js (LocalAuth)
-├── qr.png                        # QR de vinculación generado en cada login
-├── downloads/                    # Fotos descargadas
-├── logs/                         # Archivos de log
+├── downloads/                        # Fotos de comprobantes subidas (mantenimiento)
+├── logs/                             # Archivos de log
 │
-├── env/                          # Variables de entorno (fuera de la raíz)
-│   ├── .env                      # ⚠️ NEVER COMMIT (gitignored)
-│   └── .env.docker               # Plantilla de referencia (sí se commitea)
+├── env/                              # Variables de entorno (fuera de la raíz)
+│   ├── .env                          # ⚠️ NEVER COMMIT (gitignored)
+│   └── .env.docker                   # Plantilla de referencia (sí se commitea)
 │
-├── docker-compose.yml            # PostgreSQL local para desarrollo
+├── docker-compose.yml                # PostgreSQL local para desarrollo
 ├── .gitignore
 ├── package.json
 ├── package-lock.json
-└── CLAUDE.md                     # Este archivo
+└── CLAUDE.md                         # Este archivo
 ```
 
----
-
-## 🎯 SKILLS DEL BOT (Funcionalidades principales)
-
-### Skill 0: Gestión de Credenciales (✅ implementado)
-**Comando:** `setup-credentials` (WhatsApp)
-**Setup (primera vez):**
-1. Usuario escribe `setup-credentials` → `handleSetupCredentialsCommand` (`src/bot/credential-manager.js`)
-2. Bot genera token de un solo uso, válido 15 min (`credential-service.generateSetupToken`), y responde con el link `${APP_URL}/setup?token=...`
-3. Usuario completa el formulario (`src/views/credential-form.html`, servido por `src/api/routes/credential-routes.js`) con usuario/contraseña de GPS y de Empresa
-4. `POST /setup/validate` corre `validateCredentialsAgainstAPIs` (`src/utils/credential-validator.js`) — login real, **una sola vez**, contra `mapas.seguimientoglobal.com` y `app.lasegunda.com.ar`
-5. Si ambas validan OK → se cifran con AES-256-GCM (`src/utils/crypto.js`, clave derivada de `ENCRYPTION_KEY`) y se guardan en `WhatsappSession` (estado `ACTIVE`)
-6. Si alguna falla → se rechaza con el error específico, sin guardar nada
-
-**Uso (después, desde GPS Scraper / Form Automation cuando existan):**
-- `getCredentialsForBot(phoneNumber)` devuelve las credenciales ya desencriptadas, o `null` si no hay ninguna activa
-- Si fallan al usarse en producción (no en el setup) → `handleCredentialFailure(phoneNumber, service, error)` registra el intento (`credential-audit.logCredentialUsage`), marca `credentialsStatus: INVALID_CREDENTIALS` y avisa al usuario por WhatsApp para que vuelva a correr `setup-credentials`
-
-**Por qué AES y no bcrypt:** bcrypt es un hash de una sola vía; el bot necesita recuperar la contraseña en texto plano para loguearse vía Puppeteer, así que se usa cifrado simétrico reversible.
+> Nota: `.claude-instructions` en la raíz es un documento viejo del plan original (bot de WhatsApp) que no se actualizó. No es fuente de verdad — este `CLAUDE.md` sí.
 
 ---
 
-### Skill 1: Parseo de Mensajes WhatsApp
-**Entrada:** "Viaje - 15/01 - Tandil - foto.jpg" | "Mantenimiento - 10/01 - Cambio aceite - $500"  
+## 🎯 FUNCIONALIDADES (estado real)
+
+### Login y sesión (✅ implementado)
+`auth-routes.js` + `require-user.js`. Un admin crea los usuarios (no hay auto-registro). Login con email/password (bcrypt) → cookie de sesión firmada (`accessToken` en `User`, rotado en logout/reset de password).
+
+### Gestión de Credenciales GPS/Empresa (✅ implementado)
+**Ruta:** `/app/credenciales`
+1. Usuario carga usuario/contraseña de GPS y/o Empresa (solo pide las que falten o las que quiera cambiar)
+2. `validateWhicheverIsNeeded` (`credential-routes.js`) corre un login real contra `mapas.seguimientoglobal.com` y/o el SSO de la empresa (`src/utils/credential-validator.js`), una sola vez
+3. Si valida OK → se cifra con AES-256-GCM (`src/utils/crypto.js`) y se guarda en `User` (`gpsCredentialsStatus`/`companyCredentialsStatus` = `ACTIVE`)
+4. Si falla → se marca `INVALID_CREDENTIALS` con el error puntual, sin guardar nada
+
+**Uso posterior (desde el GPS Scraper):**
+- `getGpsCredentials(userId)` (`credential-service.js`) devuelve las credenciales ya desencriptadas, o `null` si no hay ninguna activa
+- Si fallan al usarse en producción (no en el setup) → `markGpsCredentialsAsInvalid(userId, reason)` + `logCredentialUsage(userId, 'GPS', false, reason)`
+- ⚠️ **Debilidad conocida:** hoy no hay ningún aviso al usuario cuando esto pasa. El estado queda en la BD pero nadie se lo comunica (no hay bot, ni email, ni banner en el menú todavía)
+
+**Por qué AES y no bcrypt:** bcrypt es un hash de una sola vía; la app necesita recuperar la contraseña en texto plano para loguearse vía Puppeteer, así que se usa cifrado simétrico reversible.
+
+### Vehículo del usuario (✅ implementado)
+**Ruta:** `/app/vehiculo`. Guarda patente (`vehicleId`, normalizada a MAYÚSCULAS porque el GPS scraper matchea el DOM por texto exacto) y modelo (`vehicleModel`).
+
+### GPS Scraper — extracción de KMs (✅ implementado, con debilidades)
+**Archivo:** `src/automation/gps-scraper.js`, consumido desde `rendicion-service.js`
+**Entrada:** credenciales GPS (vía `getGpsCredentials`) + patente del usuario + rango de fechas del viaje
 **Proceso:**
-- Detecta tipo de mensaje (Viaje / Mantenimiento)
-- Extrae fecha
-- Extrae localidad/descripción
-- Descarga foto (si aplica)
+1. Abre Puppeteer headless, login en `mapas.seguimientoglobal.com`
+2. Abre la tab "Recorridos", selecciona la fila cuyo `<td>` de patente matchea exacto contra `user.vehicleId`
+3. Setea rango de fechas (`#FechaIni`/`#FechaFin`, formato `YYYY/MM/DD`)
+4. Click en "Ver Recorridos", lee `#distRecor` y parsea el número antes de "km"
+5. Reintenta con backoff (`retryWithBackoff`, hasta `RETRY_ATTEMPTS`) salvo que el error sea de credenciales incorrectas (eso no se arregla reintentando)
 
-**Salida:** Objeto con campos parseados
-```javascript
-{
-  type: "viaje",
-  date: "2026-01-15",
-  location: "Tandil",
-  photo: Buffer,
-  messageId: "xxx"
-}
-```
+**Manejo de errores:** ver `enrichWithKilometers` en `rendicion-service.js` — es best-effort, nunca tira: si algo falla, la rendición queda igual que antes (`kilometers: null`, `status: PENDING`) y se loguea en `CredentialUsageLog`.
 
----
+**Estado real de las 3 debilidades detectadas (25/08/2026):**
+| # | Debilidad | Estado |
+|---|-----------|--------|
+| 1 | El scraping corría **síncrono dentro del request** de `POST /app/rendicion` (el usuario esperaba a que Puppeteer terminara para ver la respuesta) | ✅ Resuelto — ver abajo |
+| 2 | Si fallaban los 3 reintentos, el km quedaba `null` para siempre, sin ningún mecanismo para reintentarlo más tarde | ✅ Resuelto — ver abajo |
+| 3 | Si las credenciales GPS quedaban `INVALID_CREDENTIALS`, no había ningún aviso al usuario | ✅ Resuelto — ver abajo |
 
-### Skill 2: Extracción de KMs desde GPS (⏳ pendiente de implementar)
-**Entrada:** Credenciales GPS (vía `getCredentialsForBot`, ver Skill 0) + Fecha del viaje  
-**Proceso:**
-1. Abre Puppeteer (navegador headless)
-2. Login en mapas.seguimientoglobal.com
-3. Selecciona vehículo del usuario
-4. Setea rango de fechas
-5. Click en "Ver recorrido"
-6. Busca elemento: "Distancia: software"
-7. Extrae valor numérico
+**Cómo quedaron resueltas:**
+1. `createRendicion` ya no espera (`await`) a `enrichWithKilometers`: responde apenas la rendición se guarda en BD (`kilometers: null`) y el enriquecimiento corre en background, con su propio `.catch()` defensivo para que un fallo inesperado no tire abajo el proceso (mismo criterio que `fix(api): stop unhandled async errors from crashing the server`)
+2. Se agregó `Rendicion.gpsRetryCount` (Prisma) + `src/jobs/gps-retry-job.js`: un `setInterval` (arrancado desde `index.js`) que cada `GPS_RETRY_INTERVAL_MS` busca rendiciones `PENDING` con `kilometers: null` y `gpsRetryCount < GPS_MAX_RETRIES`, y reintenta `enrichWithKilometers` una por una (nunca en paralelo, para no levantar varios Chromium a la vez). Cada intento fallido incrementa `gpsRetryCount`; al llegar al máximo, se deja de reintentar sola (evita reintentar para siempre un error permanente, ej. patente que no existe en el GPS)
+3. `renderMenu` muestra un aviso en `/app` cuando `user.gpsCredentialsStatus === 'INVALID_CREDENTIALS'`, con link directo a `/app/credenciales`
 
-**Salida:** Número de KMs
-```javascript
-147.07
-```
+### Gastos de Mantenimiento (✅ implementado, sin OCR)
+**Ruta:** `/app/mantenimiento`. Fecha + descripción + monto (a mano) + método de pago + foto opcional (Multer, `/downloads`). El monto NO se extrae de la foto — el campo `ocrExtractedAmount`/`ocrConfidence` del schema existe pero no lo llena nadie todavía.
 
-**Manejo de errores:**
-- Reintentos x3 si falla conexión
-- Timeout si tarda >30s
-- Log detallado de cada paso
+### Automatización de Formulario Empresa (⏳ no implementado)
+No hay `company-form.js` ni nada que suba las rendiciones/gastos a `app.lasegunda.com.ar`. Los selectores en `constants.js` (`SELECTORS.COMPANY`) están escritos pero **sin verificar contra el DOM real** — asumen el portal viejo, previo a la migración a SSO Keycloak (`COMPANY_LOGIN` sí está verificado, apunta al login de Keycloak).
 
----
-
-### Skill 3: OCR de Facturas (Tesseract) (⏳ pendiente de implementar)
-**Entrada:** Foto de factura/recibo  
-**Proceso:**
-1. Convierte imagen a texto
-2. Busca patrones de números ($XXX)
-3. Valida formato de monto
-4. Retorna valor con confianza
-
-**Salida:** Monto extraído
-```javascript
-{
-  amount: 850,
-  currency: "ARS",
-  confidence: 0.95,
-  raw: "$850"
-}
-```
-
-**Validaciones:**
-- Si confidence < 0.7 → Pide confirmación al usuario
-- Rango: $50 - $100.000 (válidas)
-
----
-
-### Skill 4: Automatización de Formulario Empresa (⏳ pendiente de implementar)
-**Entrada:** Datos procesados (KMs, monto, fechas, localidad) + credenciales vía `getCredentialsForBot`  
-**Proceso:**
-1. Abre Puppeteer
-2. Login app.lasegunda.com.ar
-3. Navega: Netpro → Tasadores → Rendición Gastos
-4. Click "Rendir Viaje"
-5. Completa campos:
-   - Fecha Desde/Hasta
-   - Origen/Destino (dropdowns)
-   - Vehículo (dropdown)
-   - Km Rec. en la Gestión
-6. Agrega fila de gasto:
-   - Tipo: COMBUSTIBLE (dropdown)
-   - Motivo: RESOL. SINIES1 (dropdown)
-   - Forma Pago: TARJETA (dropdown)
-   - Importe: $850
-7. Click "Confirmar Gestión"
-8. Si hay mantenimiento: Agrega segunda fila
-
-**Salida:** Confirmación de carga
-```javascript
-{
-  success: true,
-  renditionId: "ABC123",
-  timestamp: "2026-01-15T14:30:00Z"
-}
-```
-
-**Manejo de errores:**
-- Reintentos x3 en cada paso
-- Capturas de pantalla si falla
-- Log de selector HTML usado
-- Si el fallo es por login rechazado (no timeout/selector roto) → llamar a `handleCredentialFailure(phoneNumber, 'FORM', error)` (Skill 0), no reintentar con las mismas credenciales
-
----
-
-### Skill 5: Gestión de Base de Datos Local (⏳ pendiente para rendiciones; Prisma+Docker ya está andando)
-**Entrada:** Datos de rendición completada  
-**Proceso:**
-1. Guarda registro en tabla `rendiciones`
-2. Almacena foto en carpeta `downloads`
-3. Crea log de auditoría
-4. Actualiza historial de usuario
-
-**Salida:** ID de registro guardado
-```javascript
-{
-  id: 1,
-  userId: "user@example.com",
-  date: "2026-01-15",
-  amount: 850,
-  kilometers: 147.07,
-  status: "cargado"
-}
-```
-
----
-
-### Skill 6: Respuesta Inteligente en WhatsApp (✅ `help`/`status`/`setup-credentials` implementados; respuestas de rendición ⏳ pendientes)
-**Entrada:** Resultado de toda la automatización  
-**Proceso:**
-1. Formatea mensaje de confirmación
-2. Incluye resumen de carga
-3. Agrega emoji según resultado
-4. Envía a usuario
-
-**Ejemplos:**
-
-✅ Éxito:
-```
-✅ Rendición completada!
-
-📊 Resumen:
-- Localidad: Tandil
-- Fecha: 15/01/2026
-- Distancia: 147.07 km
-- Combustible: $850
-- Estado: ✅ Cargado
-
-Puedes verificar en la plataforma.
-```
-
-⚠️ Éxito parcial:
-```
-⚠️ Cargado con advertencia
-
-- Distancia: 147.07 km ✅
-- Monto factura: NO DETECTADO ❌
-  Ingresá manualmente: $___
-
-¿Confirmás el monto?
-```
-
-❌ Error:
-```
-❌ Error en la carga
-
-Error: Formulario empresa no responde
-Reintentando en 5 minutos...
-Te aviso cuando se cargue ✅
-```
+### Administración de usuarios (✅ implementado)
+**Ruta:** `/app/usuarios` (requiere `isAdmin`). Alta de usuarios, activar/desactivar, resetear contraseña de cualquier usuario (rota su `accessToken`, cierra sesiones abiertas).
 
 ---
 
 ## 💾 BASE DE DATOS (PostgreSQL + Prisma)
 
-### Prisma Schema (Versionado como Git)
-
-El schema se define en `prisma/schema.prisma` y se versionea automáticamente:
-
-```prisma
-// Simplificado — ver prisma/schema.prisma para el real
-model User {
-  id        Int       @id @default(autoincrement())
-  email     String    @unique
-  firstName String?
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  rendiciones Rendicion[]
-  expenses Expense[]
-}
-
-// Credenciales GPS/Empresa: NO están en User. Viven en WhatsappSession,
-// keyed por número de WhatsApp (no por userId), cifradas con AES-256-GCM.
-// Ver Skill 0 más arriba.
-model WhatsappSession {
-  id                       Int      @id @default(autoincrement())
-  phoneNumber              String   @unique
-  gpsUsername              String?
-  gpsPasswordEncrypted     String?
-  companyUsername          String?
-  companyPasswordEncrypted String?
-  credentialsStatus        CredentialStatus @default(SETUP_PENDING)
-  setupToken               String?  @unique
-  setupTokenExpiresAt      DateTime?
-}
-
-model Rendicion {
-  id          Int       @id @default(autoincrement())
-  userId      Int
-  travelDate  DateTime
-  origin      String
-  destination String
-  kilometers  Decimal   @db.Decimal(10, 2)
-  status      RendicionStatus @default(PENDING)
-  createdAt   DateTime  @default(now())
-}
-
-model Expense {
-  id        Int       @id @default(autoincrement())
-  userId    Int
-  rendicionId Int?
-  type      ExpenseType
-  amount    Decimal   @db.Decimal(10, 2)
-  createdAt DateTime  @default(now())
-}
-```
-
-### Migrations (Automático con Prisma)
-
-Cada cambio al schema genera una migración automática:
-
-```bash
-# Primera vez
-npx prisma migrate dev --name init
-→ Crea: prisma/migrations/20260108_init/migration.sql
-
-# Siguiente cambio
-npx prisma migrate dev --name add_gps_fields
-→ Crea: prisma/migrations/20260108_add_gps_fields/migration.sql
-
-# Ver todas las migrations
-ls prisma/migrations/
-```
-
-**Ventajas:**
-- ✅ Historial completo de cambios (como Git)
-- ✅ Rollback automático si falla
-- ✅ Type-safe (Prisma genera TypeScript types)
-- ✅ Versionable en Git
-- ✅ Sincroniza con BD automáticamente
-
-### Tablas Principales
+Ver `prisma/schema.prisma` para el schema completo. Resumen de tablas:
 
 | Tabla | Propósito |
 |-------|-----------|
-| `User` | Usuarios de la app (perfil, vehículo). Ya no guarda credenciales |
-| `WhatsappConnection` | Estado de conexión/sesión de whatsapp-web.js (LocalAuth) |
-| `WhatsappSession` | Credenciales GPS/Empresa por número de WhatsApp, cifradas AES-256-GCM + token de setup (Skill 0) |
+| `User` | Usuario de la app: login, vehículo, credenciales GPS/Empresa cifradas, flags admin/activo |
 | `CredentialUsageLog` | Auditoría de uso de credenciales (GPS/FORM, éxito/error) |
-| `Rendicion` | Viajes rendidos |
-| `Expense` | Gastos (combustible, mantenimiento, etc) |
-| `AuditLog` | Logs de auditoría |
-| `ChangeLog` | Historial de cambios |
-| `SystemConfig` | Configuración de la app |
+| `Rendicion` | Viajes rendidos: fechas, origen/destino, `kilometers`/`gpsRetrievedAt` (llenados por el GPS scraper), `gpsRetryCount` |
+| `Expense` | Gastos (combustible, mantenimiento, etc), con campos de OCR sin usar todavía |
+| `AuditLog` | Logs de auditoría genéricos (acción/estado/mensaje) |
+| `ChangeLog` | Historial de cambios por entidad/campo |
+| `SystemConfig` | Configuración de la app (key/value) |
 
-> ⚠️ Nombres que confunden a propósito: `WhatsappConnection` = sesión de whatsapp-web.js (login del bot). `WhatsappSession` = credenciales GPS/Empresa del usuario (setup-credentials). No son lo mismo.
+> A diferencia de versiones anteriores de este documento: **no existe** `WhatsappSession` ni `WhatsappConnection` — las credenciales GPS/Empresa viven directo en `User`, keyed por `userId` (no por número de teléfono).
+
+### Comandos de Prisma
+
+```bash
+# ⚠️ Usar SIEMPRE los scripts npm (cargan env/.env vía dotenv-cli)
+npm run db:migrate -- --name nombre_de_la_migracion   # nueva migración
+npm run db:migrate:prod                                # aplicar pendientes (prod real, DATABASE_URL ya en el entorno)
+npx dotenv -e env/.env -- npx prisma migrate deploy    # lo mismo, pero en local contra el Postgres de Docker
+npm run db:studio                                      # UI de la BD
+npm run db:reset                                       # ⚠️ resetea todo
+npm run db:generate                                    # regenerar cliente Prisma
+npm run db:seed                                        # seed inicial
+```
 
 ---
 
 ## 🔑 VARIABLES DE ENTORNO
 
-⚠️ Viven en `env/.env` (no en la raíz del proyecto). `env/.env.docker` es la plantilla de referencia versionada en git; `env/.env` es el archivo real y está gitignored. `src/index.js` carga `env/.env` explícitamente con `dotenv`; los comandos Prisma (`npm run db:*`) lo cargan vía `dotenv-cli` — correr `npx prisma ...` directo no encuentra `DATABASE_URL`.
+Viven en `env/.env` (no en la raíz). `env/.env.docker` es la plantilla versionada; `env/.env` es el archivo real, gitignored. `src/index.js` carga `env/.env` explícitamente con `dotenv`; la mayoría de los comandos Prisma (`npm run db:*`) lo cargan vía `dotenv-cli` — **excepto `db:migrate:prod`** (`prisma migrate deploy` a secas), pensado para un entorno real donde `DATABASE_URL` ya la inyecta el hosting. Para correrlo en local contra el Postgres de Docker, hay que envolverlo a mano: `npx dotenv -e env/.env -- npx prisma migrate deploy`.
 
 ```
-# Base de datos (Docker Compose - ver docker-compose.yml)
+# Base de datos
 DATABASE_URL="postgresql://bot_user:secure_password_123@localhost:5432/bot_rendiciones"
 
-# WhatsApp (whatsapp-web.js)
-BAILEYS_SESSION_ID=default   # nombre legacy de la var; ver src/config/env.js
-
-# Logging
-LOG_LEVEL=debug
-LOG_FILE=./logs/bot.log
-
-# Timeouts y reintentos
+# Puppeteer
+PUPPETEER_HEADLESS=true
 PUPPETEER_TIMEOUT=30000
+PUPPETEER_SANDBOX=true
+PUPPETEER_EXECUTABLE_PATH=""
+
+# OCR (Tesseract) — instalado, sin integrar todavía
+TESSERACT_LANGUAGE="es"
+OCR_MIN_CONFIDENCE=0.75
+OCR_TIMEOUT=30000
+
+# Reintentos
 RETRY_ATTEMPTS=3
 RETRY_DELAY=5000
+OPERATION_TIMEOUT=60000
 
-# OCR
-TESSERACT_LANGUAGE=es
-OCR_MIN_CONFIDENCE=0.75
+# Reintento periódico de kilometraje GPS (ver src/jobs/gps-retry-job.js)
+GPS_RETRY_INTERVAL_MS=900000   # 15 min
+GPS_MAX_RETRIES=5
 
 # Rutas
-PHOTOS_DIR=./downloads
-SESSIONS_DIR=./sessions
+PHOTOS_DIR="./downloads"
+LOGS_DIR="./logs"
+LOG_FILE="./logs/bot.log"
 
-# Sistemas externos (Skill 0/2/4)
-GPS_URL=https://mapas.seguimientoglobal.com/login
-COMPANY_URL=https://app.lasegunda.com.ar
-
-# Servidor HTTP (formulario de setup de credenciales)
-PORT=3000
-APP_URL=http://localhost:3000
-
-# Cifrado de credenciales (AES-256-GCM, ver src/utils/crypto.js)
-# Generar con: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-ENCRYPTION_KEY=
+# Logging
+LOG_LEVEL="info"
+LOG_TO_FILE=true
+LOG_MAX_FILES=7
+LOG_MAX_SIZE="20m"
 
 # Debug
 DEBUG=false
+PUPPETEER_DEBUG=false
+SCREENSHOT_ON_ERROR=true
+SCREENSHOTS_DIR="./screenshots"
+
+# App
+PORT=3000
+APP_URL="http://localhost:3000"
+NODE_ENV="development"
+
+# Notificaciones (futuro, sin usar todavía)
+ADMIN_EMAIL="admin@example.com"
+ERROR_WEBHOOK_URL=""
+
+# Seguridad
+# Cifra (AES-256-GCM) las credenciales GPS/Empresa. Generar con:
+#   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+ENCRYPTION_KEY=
+# Firma la cookie de sesión de login. Distinta de ENCRYPTION_KEY a propósito.
+SESSION_SECRET=
 ```
 
 ---
@@ -510,22 +336,20 @@ DEBUG=false
 
 ### Cuando trabajes en un módulo:
 
-1. **Entiende el flujo completo** - Mira CLAUDE.md antes de codificar
-2. **Revisa estructura** - Qué carpeta, qué archivo
-3. **Sigue patrones existentes** - Usa estilos de código similares
-4. **Logging detallado** - Cada operación importante debe logar
-5. **Manejo de errores** - Try-catch + reintentos automáticos
-6. **Validación** - Valida inputs antes de procesarlos
+1. **Entiende el flujo real** - Mira este CLAUDE.md antes de codificar, y si algo no cuadra con el código, confiá en el código
+2. **Sigue patrones existentes** - `*-routes.js` finito y delgado → `*-service.js` con la lógica/validación → `*-repository.js` con Prisma. Cada request async va envuelto en `asyncHandler`
+3. **Logging con prefijo** - `logger.info('[MODULO] mensaje', { contexto })`, mismo estilo que el resto del código
+4. **Manejo de errores** - Usar las clases de `error-handler.js` (`ValidationError`, `DatabaseError`, `GPSError`, etc); nunca dejar una promesa async sin `.catch`/`asyncHandler` (ver `fix(api): stop unhandled async errors from crashing the server` — un unhandled rejection tira abajo todo el proceso)
+5. **Validación** - A mano en el `*-service.js` correspondiente (no hay una capa de Joi todavía pese a estar instalado)
 
 ### Checklist antes de entregar código:
 
-- [ ] Tiene try-catch con logging
-- [ ] Valida datos de entrada
-- [ ] Tiene reintentos si es necesario
-- [ ] Funciona en modo headless
-- [ ] Logs claramente identificados
-- [ ] No expone credenciales
-- [ ] Maneja timeouts
+- [ ] Rutas envueltas en `asyncHandler`
+- [ ] Errores tipados (`ValidationError`/`DatabaseError`/etc), no `Error` genérico
+- [ ] Logging con prefijo `[MODULO]`
+- [ ] Puppeteer en modo headless por default, respeta `PUPPETEER_TIMEOUT`
+- [ ] No expone credenciales en logs ni en HTML
+- [ ] Si agrega un job en background, nunca deja una promesa sin manejar (mismo criterio que los route handlers)
 
 ### Comandos útiles:
 
@@ -534,58 +358,33 @@ DEBUG=false
 npm install
 
 # ===== DOCKER (PostgreSQL local) =====
-# Ver docs/DOCKER_SETUP.md para la guía completa
-docker-compose up -d      # Levantar Postgres
-docker-compose ps         # Ver estado / healthcheck
+docker-compose up -d
+docker-compose ps
 docker-compose logs -f postgres
-docker-compose down       # Bajar (sin borrar datos, sin -v)
+docker-compose down
 
 # ===== PRISMA & BD =====
-# ⚠️ Usar SIEMPRE los scripts npm (cargan env/.env vía dotenv-cli).
-# `npx prisma ...` directo no encuentra DATABASE_URL.
-
-# Crear una migración (pide el nombre como argumento extra)
 npm run db:migrate -- --name nombre_de_la_migracion
-
-# Aplicar migrations pendientes sin generar nuevas (después de git pull, o en prod)
 npm run db:migrate:prod
-
-# Ver BD en UI (studio)
 npm run db:studio
-
-# Resetear BD completamente (⚠️ elimina datos)
 npm run db:reset
-
-# Generar cliente Prisma
 npm run db:generate
-
-# Seed inicial (datos de prueba)
 npm run db:seed
 
 # ===== EJECUCIÓN =====
-# Ejecutar bot
-npm start
-
-# Modo desarrollo (auto-restart on file change)
-npm run dev
-
-# Modo debug (logs verbosos)
-npm run debug
+npm start          # producción
+npm run dev        # auto-restart (node --watch)
+npm run debug      # logs verbosos (NODE_DEBUG=*)
 
 # ===== TESTING =====
-npm test
+npm test           # node --test tests/**/*.test.js (carpeta vacía por ahora)
 
-# ===== LOGGING & LIMPIEZA =====
-# Ver logs en tiempo real
-tail -f logs/bot.log
+# ===== LINT / FORMAT =====
+npm run lint
+npm run format
 
-# Limpiar sesiones (cuidado!)
-npm run clean:sessions
-
-# Limpiar logs antiguos
+# ===== LIMPIEZA =====
 npm run clean:logs
-
-# Limpiar fotos descargadas
 npm run clean:downloads
 ```
 
@@ -610,14 +409,7 @@ git status         # Confirmar archivos
 <optional body: what changed and why, not how>
 ```
 
-**Types permitidos:**
-- `feat` - Nueva funcionalidad
-- `fix` - Bug fix
-- `refactor` - Reorganización de código (no cambia funcionalidad)
-- `perf` - Mejora de performance
-- `test` - Tests
-- `docs` - Documentación
-- `chore` - Tareas (dependencias, setup, etc)
+**Types permitidos:** `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore`
 
 ### Reglas
 
@@ -632,20 +424,20 @@ git status         # Confirmar archivos
 ### Ejemplos ✅
 
 ```bash
-feat(whatsapp-bot): implement message parser
-fix(puppeteer): wait for gps page load
+feat(rendicion): fill kilometers from GPS on creation
+fix(gps-scraper): extract km from correct element
 refactor(db): simplify user queries with prisma
-perf(ocr): reduce memory usage in image processing
+perf(gps-scraper): reuse browser across GPS retry attempts
 docs(setup): add postgresql installation guide
 chore(deps): update prisma to 5.8.0
-feat(db-schema): add expense logging table
 
 # Con body cuando el por qué no es obvio:
-fix(gps-scraper): extract km from correct element
+fix(api): stop unhandled async errors from crashing the server
 
-Previously we were looking for "Distancia" field
-but it changed to "Distancia: software". Updated
-selector to be more specific to avoid breakage.
+Every route handler ran unguarded async DB calls. If Postgres was
+unreachable mid-request, the rejected promise had no catch, so Node
+terminated the whole process. Wrap every async handler with
+asyncHandler(), forwarding errors to a centralized error middleware.
 ```
 
 ### Workflow
@@ -657,18 +449,6 @@ selector to be more specific to avoid breakage.
 5. ✅ `git commit -m "<mensaje>"`
 6. ✅ `git push`
 
-### Ejemplos con scope (recomendado)
-
-```bash
-feat(whatsapp-bot): handle media downloads
-fix(form-automation): click correct submit button
-refactor(ocr-service): extract confidence validation
-perf(image-processing): cache tesseract models
-test(gps-scraper): add timeout handling
-docs(api): document rendicion endpoints
-chore(prisma): add new migration for audit logs
-```
-
 ### Checklist antes de commit
 
 - [ ] Cambios son coherentes y relacionados
@@ -677,39 +457,37 @@ chore(prisma): add new migration for audit logs
 - [ ] Body: solo si el "por qué" no es obvio
 - [ ] No hay credenciales en el código
 - [ ] Tests pasan (cuando aplique)
-- [ ] Logs están en DEBUG (no en INFO para desarrollo)
 
 ---
 
 ## 🚀 FASES DEL DESARROLLO
 
-### FASE 1: MVP Local (4-6 semanas)
-- [x] Setup Node + whatsapp-web.js
-- [x] Bot recibe mensajes WhatsApp
-- [x] Parser de mensajes
-- [x] Gestión de credenciales (setup-credentials + formulario + validación real + cifrado AES) — Skill 0
-- [x] PostgreSQL local vía Docker Compose (reemplaza el plan original de SQLite)
-- [ ] Puppeteer → GPS scraper
-- [ ] Tesseract → OCR
-- [ ] Puppeteer → Formulario empresa (usando `getCredentialsForBot`)
-- [ ] Guardar rendiciones/gastos en BD desde el flujo real (hoy solo hay TODO en `whatsapp.js`)
-- [ ] Testing exhaustivo
+### FASE 1: MVP Local
+- [x] Setup Node + Express (webapp de formularios, sin frontend separado)
+- [x] Login de usuarios (bcrypt + cookie de sesión firmada)
+- [x] PostgreSQL local vía Docker Compose + Prisma
+- [x] Gestión de credenciales GPS/Empresa (validación real + cifrado AES)
+- [x] Vehículo del usuario (patente + modelo)
+- [x] GPS Scraper (Puppeteer) integrado a la creación de rendiciones
+- [x] Reintento en background del kilometraje + aviso al usuario si las credenciales GPS quedan inválidas
+- [x] Gastos de mantenimiento (sin OCR, monto manual + foto de comprobante)
+- [x] Administración de usuarios (alta, activar/desactivar, resetear password)
+- [ ] Tesseract → OCR de comprobantes
+- [ ] Puppeteer → Formulario empresa (La Segunda)
+- [ ] Testing (la carpeta `tests/` está vacía)
 
-### FASE 2: Cloud + Multi-usuario (2-3 semanas)
-- [ ] PostgreSQL en Railway
-- [ ] Autenticación de usuarios
-- [ ] Deploy a Railway
+### FASE 2: Cloud + Multi-usuario
+- [ ] PostgreSQL en Railway (u otro hosting)
+- [ ] Deploy de la webapp
 - [ ] Testing con 2-3 compañeros
 
-### FASE 3: Escalabilidad (1-2 semanas)
+### FASE 3: Escalabilidad
 - [ ] Onboarding de 10-13 usuarios
 - [ ] Monitoreo y alertas
 - [ ] Documentación
 
 ### FASE 4: Dashboard (futuro)
-- [ ] Interfaz web
-- [ ] Ver histórico
-- [ ] Reportes
+- [ ] Histórico y reportes más ricos que la lista simple actual
 
 ---
 
@@ -717,30 +495,32 @@ chore(prisma): add new migration for audit logs
 
 | Problema | Solución |
 |----------|----------|
-| Bot no se conecta / QR no aparece | Eliminar carpeta `sessions/`, reintentar (revisar también `qr.png` generado) |
-| QR expira antes de escanear | Reintentar; el QR de whatsapp-web.js expira a los ~60s |
-| Puppeteer timeout | Aumentar `PUPPETEER_TIMEOUT` en `env/.env` |
-| OCR no detecta monto | Mejorar calidad foto, revisar idioma (⏳ OCR aún no está integrado) |
-| Formulario empresa no se carga | ⏳ Módulo no implementado todavía (ver Skill 4) |
-| **ERROR: DATABASE_URL no definida** | Las env vars viven en `env/.env`, no en la raíz. Verificar que existe y correr Prisma vía `npm run db:*` (usan `dotenv-cli`); `npx prisma ...` directo no la encuentra |
+| **ERROR: DATABASE_URL no definida** | Las env vars viven en `env/.env`, no en la raíz. Correr Prisma vía `npm run db:*` (usan `dotenv-cli`); `npx prisma ...` directo no la encuentra |
 | **ERROR: connect ECONNREFUSED en PostgreSQL** | Verificar que Docker Desktop está corriendo y `docker-compose up -d` levantó el contenedor (`docker-compose ps` debe decir `healthy`) |
 | **Docker Desktop no responde (`unable to get image ...`)** | Abrir Docker Desktop y esperar a que el daemon esté listo antes de `docker-compose up -d` |
-| **`prisma migrate dev` pide confirmación interactiva y se cuelga** | Pasa con cambios ambiguos de modelos (ej. rename vs drop+create). Generar el SQL a mano con `npx dotenv -e env/.env -- npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script`, guardarlo en `prisma/migrations/<timestamp>_<nombre>/migration.sql` y aplicar con `npm run db:migrate:prod` |
-| **ERROR: Migration failed** | Ejecutar `npm run db:reset` para resetear (⚠️ elimina datos) |
-| **ERROR: Prisma client desactualizado** | Ejecutar `npm run db:generate` |
-| **ERROR: Foreign key constraint fail** | Verificar que `userId`/`phoneNumber` existe antes de agregar rendiciones o logs de credenciales |
-| **Usuario ve "⚠️ Tus credenciales no funcionan"** | Es esperado tras un fallo de uso real (Skill 0); pedirle que reenvíe `setup-credentials` para regenerar el link y re-validar |
-| **Token de setup-credentials expirado** | Dura 15 minutos; el usuario debe volver a escribir `setup-credentials` |
-| **Logs muy grandes** | Limitar con `npm run clean:logs` o ajustar `LOG_MAX_FILES` |
+| **`prisma migrate dev` pide confirmación interactiva y se cuelga** | Generar el SQL a mano con `npx dotenv -e env/.env -- npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script`, guardarlo en `prisma/migrations/<timestamp>_<nombre>/migration.sql` y aplicar con `npm run db:migrate:prod` |
+| **ERROR: Migration failed** | `npm run db:reset` (⚠️ elimina datos) |
+| **ERROR: Prisma client desactualizado** | `npm run db:generate` |
+| **Puppeteer timeout (login o GPS scraper)** | Aumentar `PUPPETEER_TIMEOUT` en `env/.env`; revisar si el sitio de GPS/Empresa cambió de DOM (ver `SELECTORS` en `constants.js`) |
+| **Usuario ve "⚠️ Tus credenciales de GPS no funcionan" en el menú** | Esperado tras un fallo real de uso (no del setup); pedirle que vuelva a `/app/credenciales` y las recargue |
+| **Una rendición se queda sin kilometraje** | Revisar `CredentialUsageLog` (service GPS) y `Rendicion.gpsRetryCount`. Si llegó a `GPS_MAX_RETRIES`, el job dejó de reintentar sola — hay que revisar el error de fondo (credenciales, patente no encontrada, DOM del GPS cambiado) antes de que sirva reintentar a mano |
+| **No se pudo subir la foto en /app/mantenimiento** | Límite de 10MB (Multer) y solo `image/*`; revisar `PHOTOS_DIR` |
+| **Sesión no persiste / redirige siempre a /login** | Revisar `SESSION_SECRET` en `env/.env` (firma la cookie) y que el usuario esté `isActive` |
+
+---
+
+## 📌 HISTORIA (para contexto, ya no vigente)
+
+El proyecto arrancó planeado como bot de WhatsApp (`whatsapp-web.js`, parser de mensajes, respuestas automáticas) con setup de credenciales vía link temporal enviado por WhatsApp. Ese enfoque se abandonó en favor de una webapp con login propio — más simple de operar y desplegar para un puñado de usuarios. Si ves referencias al bot de WhatsApp en `.claude-instructions` u otros documentos viejos, son del plan original y no reflejan el código actual.
 
 ---
 
 ## 📞 CONTACTO & NOTAS
 
 - **Desarrollador:** Emanuel Perez
-- **Empresa:** La Segunda (rendición de viaticos)
-- **Estado Actual:** Bot de WhatsApp + gestión de credenciales (setup, cifrado AES, validación real) funcionando end-to-end sobre PostgreSQL en Docker
-- **Próximo paso:** Implementar GPS Scraper y Formulario Empresa (Skills 2 y 4), consumiendo las credenciales ya guardadas vía `getCredentialsForBot`
+- **Empresa:** La Segunda (rendición de viáticos)
+- **Estado Actual:** Webapp de formularios funcionando end-to-end sobre PostgreSQL/Prisma: login, credenciales GPS/Empresa cifradas y validadas, vehículo, rendiciones con kilometraje automático (con reintento en background) y gastos de mantenimiento manuales
+- **Próximo paso:** Automatizar la carga en el formulario de la empresa (La Segunda) e integrar OCR para el monto de los comprobantes
 
 ---
 

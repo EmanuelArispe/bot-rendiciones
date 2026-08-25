@@ -18,9 +18,10 @@ function validateLocation(provinceCode, city, label) {
 
 /**
  * Intenta completar los km de la rendición contra el GPS. Best-effort: nunca
- * tira, si algo falla la rendición queda igual que antes (pendiente)
+ * tira, si algo falla la rendición queda igual que antes (pendiente) y el
+ * intento cuenta para gpsRetryCount (ver src/jobs/gps-retry-job.js)
  */
-async function enrichWithKilometers(user, rendicion) {
+export async function enrichWithKilometers(user, rendicion) {
   try {
     if (!user.vehicleId) {
       logger.info(`[RENDICION] Usuario ${user.id} sin vehículo configurado, se omite el GPS`, {
@@ -69,6 +70,8 @@ async function enrichWithKilometers(user, rendicion) {
       if (error.message?.includes('incorrectos')) {
         await markGpsCredentialsAsInvalid(user.id, error.message)
       }
+
+      return await rendicionRepository.incrementGpsRetryCount(rendicion.id)
     } catch (auditError) {
       logger.error('[RENDICION] Falló el registro de auditoría de GPS', { error: auditError.message })
     }
@@ -120,7 +123,18 @@ export async function createRendicion(
 
     logger.info(`[RENDICION] Creada para el usuario ${user.id}`, { rendicionId: rendicion.id })
 
-    return await enrichWithKilometers(user, rendicion)
+    // No bloquea la respuesta al usuario: el scraping puede tardar 10-30s+.
+    // enrichWithKilometers ya maneja sus propios errores, pero el .catch acá
+    // es la última red de seguridad para que un fallo inesperado no quede
+    // como un unhandled rejection (eso tira abajo todo el proceso, ver #17)
+    enrichWithKilometers(user, rendicion).catch((error) => {
+      logger.error('[RENDICION] Error inesperado enriqueciendo con GPS en background', {
+        rendicionId: rendicion.id,
+        error: error.message,
+      })
+    })
+
+    return rendicion
   } catch (error) {
     throw new DatabaseError('No se pudo guardar la rendición', {
       userId: user.id,

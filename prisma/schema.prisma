@@ -113,9 +113,12 @@ model Rendicion {
   destinationProvince      String
   destinationCity          String
 
-  // Datos GPS (completados por el GPS Scraper, aún no implementado)
+  // Datos GPS (completados en background por el GPS Scraper, ver rendicion-service.js)
   kilometers      Decimal?  @db.Decimal(10, 2)
   gpsRetrievedAt  DateTime?
+  // Cuántas veces se intentó (y falló) completar kilometers vía GPS. El job de
+  // reintento (src/jobs/gps-retry-job.js) deja de reintentar al llegar a GPS_MAX_RETRIES
+  gpsRetryCount   Int       @default(0)
 
   // Vehículo usado
   vehicleUsed     String?   // ej: "VW AMAROK CONFORTLINE V6 2018 AC767UI"

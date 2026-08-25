@@ -34,12 +34,11 @@ router.post('/app/rendicion', requireUser, asyncHandler(async (req, res) => {
   }
 
   try {
-    const rendicion = await createRendicion(req.user, values)
+    await createRendicion(req.user, values)
 
     const body =
-      rendicion.kilometers != null
-        ? `Distancia detectada automáticamente por GPS: ${rendicion.kilometers} km. <a class="back-link" href="/app">← Volver al menú</a>`
-        : `Queda pendiente hasta que se complete el kilometraje. <a class="back-link" href="/app">← Volver al menú</a>`
+      'El kilometraje se completa solo desde el GPS en unos segundos. ' +
+      '<a class="back-link" href="/app">← Volver al menú</a>'
 
     res.type('html').send(
       renderMessagePage({
