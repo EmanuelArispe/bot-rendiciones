@@ -57,6 +57,9 @@ screenshots/
 out/
 *.orig
 
+# OCR: paquete de idioma descargado por tesseract.js (ver TESSERACT_CACHE_PATH)
+*.traineddata
+
 # ============================================
 # ARCHIVOS TEMPORALES
 # ============================================
