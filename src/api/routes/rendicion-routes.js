@@ -3,7 +3,6 @@ import { requireUser } from '../middleware/require-user.js'
 import { asyncHandler } from '../middleware/async-handler.js'
 import { createRendicion } from '../../services/rendicion-service.js'
 import { renderRendicionForm } from '../../views/renderers/rendicion-form-renderer.js'
-import { renderMessagePage } from '../../views/renderers/page-renderer.js'
 import logger from '../../utils/logger.js'
 
 const router = Router()
@@ -34,19 +33,11 @@ router.post('/app/rendicion', requireUser, asyncHandler(async (req, res) => {
   }
 
   try {
-    await createRendicion(req.user, values)
+    const rendicion = await createRendicion(req.user, values)
 
-    const body =
-      'El kilometraje se completa solo desde el GPS en unos segundos. ' +
-      '<a class="back-link" href="/app">← Volver al menú</a>'
-
-    res.type('html').send(
-      renderMessagePage({
-        title: 'Listo',
-        heading: '✅ Rendición guardada',
-        body,
-      })
-    )
+    // El kilometraje se completa solo (background) desde acá en adelante.
+    // Ahora el usuario carga los gastos del viaje (combustible, peajes, etc)
+    res.redirect(`/app/rendicion/${rendicion.id}/gastos`)
   } catch (error) {
     logger.error('[RENDICION_ROUTES] Error en POST /app/rendicion', { error: error.message })
     res

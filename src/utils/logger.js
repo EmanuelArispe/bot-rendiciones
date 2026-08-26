@@ -109,6 +109,14 @@ const logger = winston.createLogger({
       filename: path.join(logsDir, 'exceptions.log'),
     }),
   ],
+  // Por default winston loguea la excepción y llama process.exit(1) (mata TODO
+  // el proceso, no solo el request que la disparó). Algunas libs (ej. el
+  // worker de tesseract.js cuando falla al bajar el paquete de idioma) emiten
+  // errores por fuera de la cadena de promesas -> asyncHandler no los agarra,
+  // así que sin esto un solo OCR con mala config/red tira abajo la app para
+  // todos los usuarios. Preferimos loguear y seguir sirviendo el resto de
+  // los requests.
+  exitOnError: false,
 })
 
 /**

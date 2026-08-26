@@ -3,26 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cargar Mantenimiento - Bot Rendiciones</title>
+  <title>Gastos del viaje - Bot Rendiciones</title>
   <link rel="stylesheet" href="/static/app.css" />
 </head>
 <body>
-  <div class="card">
-    <h1>🔧 Cargar mantenimiento</h1>
-    <p class="subtitle">
-      Subí la factura (foto o PDF) y el monto se detecta solo. Si preferís, cargalo a mano.
-    </p>
+  <div class="card card-wide">
+    <h1>🧾 Gastos del viaje a {{DESTINATION}}</h1>
+    <p class="subtitle">Agregá una factura por cada gasto (combustible, peajes, hospedaje, etc). El kilometraje se completa solo, por separado.</p>
+
+    {{EXPENSES_LIST}}
 
     {{ERROR}}
+    {{SUCCESS}}
 
-    <form method="POST" action="/app/mantenimiento" enctype="multipart/form-data">
+    <form method="POST" action="/app/rendicion/{{RENDICION_ID}}/gastos" enctype="multipart/form-data">
+      <label for="type">Tipo de gasto</label>
+      <select id="type" name="type" required>
+        <option value="">Seleccionar...</option>
+        {{EXPENSE_TYPE_OPTIONS}}
+      </select>
+
       <label for="date">Fecha</label>
       <input type="date" id="date" name="date" value="{{DATE}}" required />
 
       <label for="description">Descripción</label>
-      <input type="text" id="description" name="description" value="{{DESCRIPTION}}" required autocomplete="off" placeholder="ej: Cambio de aceite" />
+      <input type="text" id="description" name="description" value="{{DESCRIPTION}}" required autocomplete="off" placeholder="ej: Nafta YPF Ruta 5" />
 
-      <label for="receipt">Factura del comprobante (foto o PDF)</label>
+      <label for="receipt">Factura (foto o PDF)</label>
       <input type="file" id="receipt" name="receipt" accept="image/*,application/pdf" capture="environment" />
 
       <label for="amount">Monto (dejalo vacío para detectarlo de la factura)</label>
@@ -34,11 +41,11 @@
         {{PAYMENT_METHOD_OPTIONS}}
       </select>
 
-      <button type="submit">Guardar mantenimiento</button>
+      <button type="submit">Agregar gasto</button>
     </form>
 
     <div class="page-links">
-      <a class="back-link" href="/app">← Volver al menú</a>
+      <a class="back-link" href="/app">← Terminar y volver al menú</a>
       <a class="back-link" href="/logout">Cerrar sesión</a>
     </div>
   </div>

@@ -11,3 +11,10 @@ export function findByUserId(userId, limit = 10) {
     take: limit,
   })
 }
+
+export function findByRendicionId(rendicionId) {
+  return prisma.expense.findMany({
+    where: { rendicionId },
+    orderBy: { createdAt: 'asc' },
+  })
+}

@@ -3,8 +3,8 @@
 **Proyecto:** Automatización de rendición de viáticos y gastos de mantenimiento vehicular
 **Autor:** Emanuel Perez
 **Stack:** Node.js + Express + Puppeteer + PostgreSQL (Docker) + Prisma
-**Estado:** Fase 1 - MVP Local (login web + credenciales + vehículo + GPS scraper implementados; formulario empresa/OCR pendientes)
-**Última actualización:** 25/08/2026
+**Estado:** Fase 1 - MVP Local (login web + credenciales + vehículo + GPS scraper + OCR de facturas implementados; formulario empresa pendiente)
+**Última actualización:** 26/08/2026
 
 ---
 
@@ -15,7 +15,9 @@
 Webapp que automatiza la rendición de viáticos:
 - Usuario se loguea, completa un formulario de rendición (fechas + origen/destino)
 - La app extrae los KMs recorridos desde el GPS de la empresa automáticamente (Puppeteer)
-- Usuario carga gastos de mantenimiento con foto de comprobante (sin OCR todavía, monto manual)
+- Usuario carga, uno por uno, los gastos del viaje (combustible, peajes, hospedaje, etc) con la
+  factura (foto o PDF); el monto se detecta solo (OCR/texto del PDF) o se ingresa a mano
+- Usuario carga gastos de mantenimiento con el mismo mecanismo de factura + monto asistido
 - Queda un histórico en PostgreSQL
 - Pendiente: cargar todo eso en el formulario de la empresa (La Segunda) automáticamente
 
@@ -50,10 +52,17 @@ Webapp que automatiza la rendición de viáticos:
       queda con kilometers null y un job periódico la vuelve a intentar
       (ver Skill GPS más abajo)
 
-4️⃣  CARGAR MANTENIMIENTO (✅ implementado, sin OCR)
-    Usuario va a /app/mantenimiento, carga fecha + descripción + monto (a mano)
-    + método de pago + foto opcional del comprobante (se guarda en /downloads,
-    no se procesa con OCR todavía)
+3️⃣.5  CARGAR GASTOS DEL VIAJE (✅ implementado, uno a la vez)
+    Al guardar la rendición, se redirige a /app/rendicion/:id/gastos
+    → el usuario agrega ahí combustible, peajes, hospedaje, etc — un form
+      por factura, tantas veces como haga falta ("Terminar" = volver al menú)
+    → cada gasto: tipo + fecha + descripción + factura (foto o PDF) + método
+      de pago; el monto se detecta solo (ver Skill OCR) o se carga a mano
+
+4️⃣  CARGAR MANTENIMIENTO (✅ implementado)
+    Usuario va a /app/mantenimiento, carga fecha + descripción + método de
+    pago + factura (foto o PDF, ver Skill OCR) + monto (opcional: si se deja
+    vacío, se detecta de la factura)
 
 5️⃣  CARGA EN FORMULARIO EMPRESA (⏳ no implementado)
     No existe automatización de app.lasegunda.com.ar / Netpro / Rendición de
@@ -74,7 +83,8 @@ Webapp que automatiza la rendición de viáticos:
 
 ### Automatización Web
 - **Puppeteer** - Login/validación de credenciales (✅) y GPS scraper (✅). Formulario de empresa (⏳ no existe)
-- **Tesseract.js** - Dependencia instalada, sin ninguna integración todavía (OCR de comprobantes pendiente)
+- **Tesseract.js** - OCR de fotos de facturas (✅, ver `src/ocr/invoice-parser.js`)
+- **pdfjs-dist** (`legacy/build`, sin canvas) - Extrae el texto embebido de facturas en PDF (✅, misma ruta que Tesseract)
 
 ### Base de Datos
 - **PostgreSQL** - Vía Docker Compose en desarrollo (`docker-compose.yml`, ver `docs/DOCKER_SETUP.md`)
@@ -83,7 +93,7 @@ Webapp que automatiza la rendición de viáticos:
 ### Utilidades
 - **Dotenv / dotenv-cli** - Variables de entorno (viven en `env/`, no en la raíz)
 - **cookie-parser** - Cookie de sesión firmada (login)
-- **Multer** - Upload de fotos de comprobantes (`mantenimiento-routes.js`)
+- **Multer** - Upload de facturas (foto o PDF), middleware compartido en `receipt-upload.js`
 - **Winston (+ winston-daily-rotate-file)** - Logging
 - **Joi** - Instalado, sin uso visible todavía (la validación real está a mano en los `*-service.js`)
 - **Node `crypto` (AES-256-GCM)** - Cifrado reversible de credenciales GPS/Empresa (`src/utils/crypto.js`)
@@ -102,14 +112,16 @@ bot-rendiciones/
 │   │   ├── middleware/
 │   │   │   ├── require-user.js       # ✅ Lee cookie de sesión, carga req.user o redirige a /login
 │   │   │   ├── require-admin.js      # ✅ Corta con 403 si req.user no es admin
-│   │   │   └── async-handler.js      # ✅ Envuelve handlers async → next(error) (evita crashear el proceso)
+│   │   │   ├── async-handler.js      # ✅ Envuelve handlers async → next(error) (evita crashear el proceso)
+│   │   │   └── receipt-upload.js     # ✅ Multer compartido (foto o PDF) para mantenimiento y gastos de viaje
 │   │   └── routes/
 │   │       ├── auth-routes.js        # ✅ /, /login, /logout
 │   │       ├── menu-routes.js        # ✅ /app (menú principal)
 │   │       ├── credential-routes.js  # ✅ /app/credenciales (setup GPS/Empresa)
 │   │       ├── profile-routes.js     # ✅ /app/vehiculo, /app/cambiar-password
 │   │       ├── rendicion-routes.js   # ✅ /app/rendicion
-│   │       ├── mantenimiento-routes.js # ✅ /app/mantenimiento (+ upload de foto)
+│   │       ├── rendicion-gasto-routes.js # ✅ /app/rendicion/:id/gastos (gastos del viaje, de a uno)
+│   │       ├── mantenimiento-routes.js # ✅ /app/mantenimiento (+ upload de foto/PDF)
 │   │       └── admin-routes.js       # ✅ /app/usuarios (alta, activar/desactivar, resetear password)
 │   │
 │   ├── services/
@@ -117,14 +129,17 @@ bot-rendiciones/
 │   │   ├── credential-service.js     # ✅ Guardar/leer credenciales cifradas, marcar inválidas
 │   │   ├── credential-audit.js       # ✅ Log de uso de credenciales (GPS/FORM)
 │   │   ├── rendicion-service.js      # ✅ Crear rendición + enriquecer con KMs del GPS (best-effort)
-│   │   └── expense-service.js        # ✅ Gastos de mantenimiento (sin OCR)
+│   │   └── expense-service.js        # ✅ Gastos (mantenimiento + gastos de viaje), monto manual u OCR
 │   │
-│   ├── jobs/                         # ⏳ No existe todavía (ver Skill GPS: reintento pendiente)
-│   │   └── gps-retry-job.js          # Reintenta el kilometraje de rendiciones que quedaron sin GPS
+│   ├── jobs/
+│   │   └── gps-retry-job.js          # ✅ Reintenta el kilometraje de rendiciones que quedaron sin GPS
 │   │
 │   ├── automation/
 │   │   └── gps-scraper.js            # ✅ Puppeteer → login GPS, selecciona vehículo, extrae KMs
 │   │   # company-form.js             # ⏳ No existe (formulario de empresa)
+│   │
+│   ├── ocr/
+│   │   └── invoice-parser.js         # ✅ Monto desde foto (Tesseract) o PDF con texto (pdfjs-dist)
 │   │
 │   ├── db/
 │   │   ├── prisma.js                 # ✅ Cliente Prisma singleton
@@ -139,8 +154,8 @@ bot-rendiciones/
 │   │   └── renderers/                # ✅ Un renderer por página (arma el HTML a partir de templates + datos)
 │   │
 │   ├── utils/
-│   │   ├── logger.js                 # ✅ Winston
-│   │   ├── error-handler.js          # ✅ AppError/GPSError/etc + retryWithBackoff/withTimeout
+│   │   ├── logger.js                 # ✅ Winston (exitOnError: false, ver nota en Troubleshooting)
+│   │   ├── error-handler.js          # ✅ AppError/GPSError/OCRError/etc + retryWithBackoff/withTimeout
 │   │   ├── crypto.js                 # ✅ AES-256-GCM encrypt/decrypt
 │   │   └── credential-validator.js   # ✅ Login real (1 vez) contra GPS/Empresa, usado en /app/credenciales
 │   │
@@ -226,8 +241,27 @@ bot-rendiciones/
 2. Se agregó `Rendicion.gpsRetryCount` (Prisma) + `src/jobs/gps-retry-job.js`: un `setInterval` (arrancado desde `index.js`) que cada `GPS_RETRY_INTERVAL_MS` busca rendiciones `PENDING` con `kilometers: null` y `gpsRetryCount < GPS_MAX_RETRIES`, y reintenta `enrichWithKilometers` una por una (nunca en paralelo, para no levantar varios Chromium a la vez). Cada intento fallido incrementa `gpsRetryCount`; al llegar al máximo, se deja de reintentar sola (evita reintentar para siempre un error permanente, ej. patente que no existe en el GPS)
 3. `renderMenu` muestra un aviso en `/app` cuando `user.gpsCredentialsStatus === 'INVALID_CREDENTIALS'`, con link directo a `/app/credenciales`
 
-### Gastos de Mantenimiento (✅ implementado, sin OCR)
-**Ruta:** `/app/mantenimiento`. Fecha + descripción + monto (a mano) + método de pago + foto opcional (Multer, `/downloads`). El monto NO se extrae de la foto — el campo `ocrExtractedAmount`/`ocrConfidence` del schema existe pero no lo llena nadie todavía.
+### OCR de facturas — monto asistido (✅ implementado)
+**Archivo:** `src/ocr/invoice-parser.js`, consumido desde `expense-service.js` (mantenimiento y gastos de viaje)
+**Entrada:** archivo ya subido a disco (foto o PDF) + su mimetype
+**Proceso:**
+1. Si es PDF (`application/pdf`): se extrae el texto embebido con `pdfjs-dist` (`legacy/build`, sin `canvas` — no rendereamos páginas, solo leemos texto). Las facturas electrónicas AFIP casi siempre tienen texto real, no son un escaneo, así que esto alcanza en el caso común
+2. Si el PDF no tiene texto (probablemente escaneado) o es una foto: se corre Tesseract.js sobre la imagen
+3. En ambos casos, se busca primero una línea con "total"/"importe total"/"total a pagar" (confianza 0.9); si no aparece, se toma el monto más alto encontrado con `$` como heurística (confianza 0.5, y en fotos además se multiplica por la confianza propia de Tesseract)
+4. Números en formato argentino (`12.345,67`) se normalizan a `12345.67`
+
+**Cómo se usa (`resolveAmount` en `expense-service.js`):**
+- Si el usuario tipeó un monto a mano, se usa ese siempre — el OCR nunca lo pisa
+- Si lo dejó vacío, se corre el OCR/extracción de texto; si la confianza da `>= OCR_MIN_CONFIDENCE` se usa ese monto (guardando `ocrExtractedAmount`/`ocrConfidence` en `Expense`); si no, se rechaza el formulario pidiendo que lo cargue a mano (no se guarda nada con un monto adivinado)
+
+**⚠️ Gotcha real que costó una tarde:** `TESSERACT_LANGUAGE` tiene que ser el código de tessdata (`spa`), no ISO 639-1 (`es` no existe como paquete → 404 al descargarlo). Ver también la nota de `exitOnError: false` en Troubleshooting: ese fallo puntual tiraba abajo **todo el proceso**, no solo el request, porque el worker de tesseract.js emite el error por fuera de la cadena de promesas.
+
+### Gastos de Mantenimiento (✅ implementado)
+**Ruta:** `/app/mantenimiento`. Fecha + descripción + método de pago + factura (foto o PDF, opcional) + monto (opcional: si no se completa, se detecta de la factura vía OCR — ver Skill OCR arriba).
+
+### Gastos del viaje (✅ implementado, uno a la vez)
+**Rutas:** `/app/rendicion/:id/gastos` (GET lista + form para agregar, POST agrega uno)
+Un viaje puede tener varios gastos de distinto tipo (combustible, peaje, estacionamiento, hotelería, comida, otros — `MANTENIMIENTO` queda afuera, tiene su propio flujo). Al guardar la rendición se redirige acá; el usuario agrega una factura por gasto (mismo mecanismo de monto asistido por OCR que mantenimiento) y repite hasta terminar — no hay un paso explícito de "cerrar", el link "Terminar y volver al menú" alcanza. La ruta valida que la rendición sea del usuario logueado (404 si no).
 
 ### Automatización de Formulario Empresa (⏳ no implementado)
 No hay `company-form.js` ni nada que suba las rendiciones/gastos a `app.lasegunda.com.ar`. Los selectores en `constants.js` (`SELECTORS.COMPANY`) están escritos pero **sin verificar contra el DOM real** — asumen el portal viejo, previo a la migración a SSO Keycloak (`COMPANY_LOGIN` sí está verificado, apunta al login de Keycloak).
@@ -246,7 +280,7 @@ Ver `prisma/schema.prisma` para el schema completo. Resumen de tablas:
 | `User` | Usuario de la app: login, vehículo, credenciales GPS/Empresa cifradas, flags admin/activo |
 | `CredentialUsageLog` | Auditoría de uso de credenciales (GPS/FORM, éxito/error) |
 | `Rendicion` | Viajes rendidos: fechas, origen/destino, `kilometers`/`gpsRetrievedAt` (llenados por el GPS scraper), `gpsRetryCount` |
-| `Expense` | Gastos (combustible, mantenimiento, etc), con campos de OCR sin usar todavía |
+| `Expense` | Gastos (combustible, mantenimiento, etc), `ocrExtractedAmount`/`ocrConfidence` completados cuando el monto vino del OCR |
 | `AuditLog` | Logs de auditoría genéricos (acción/estado/mensaje) |
 | `ChangeLog` | Historial de cambios por entidad/campo |
 | `SystemConfig` | Configuración de la app (key/value) |
@@ -282,8 +316,9 @@ PUPPETEER_TIMEOUT=30000
 PUPPETEER_SANDBOX=true
 PUPPETEER_EXECUTABLE_PATH=""
 
-# OCR (Tesseract) — instalado, sin integrar todavía
-TESSERACT_LANGUAGE="es"
+# OCR (Tesseract + pdfjs-dist para PDF con texto)
+# ⚠️ Código de tessdata, NO ISO 639-1: "es" no existe como paquete y tira 404
+TESSERACT_LANGUAGE="spa"
 OCR_MIN_CONFIDENCE=0.75
 OCR_TIMEOUT=30000
 
@@ -470,9 +505,10 @@ asyncHandler(), forwarding errors to a centralized error middleware.
 - [x] Vehículo del usuario (patente + modelo)
 - [x] GPS Scraper (Puppeteer) integrado a la creación de rendiciones
 - [x] Reintento en background del kilometraje + aviso al usuario si las credenciales GPS quedan inválidas
-- [x] Gastos de mantenimiento (sin OCR, monto manual + foto de comprobante)
+- [x] Gastos de mantenimiento (factura + monto asistido por OCR)
+- [x] Gastos del viaje: varios por rendición, uno a la vez, con factura (foto o PDF)
+- [x] OCR de facturas (Tesseract para fotos, pdfjs-dist para texto de PDF) con fallback a carga manual
 - [x] Administración de usuarios (alta, activar/desactivar, resetear password)
-- [ ] Tesseract → OCR de comprobantes
 - [ ] Puppeteer → Formulario empresa (La Segunda)
 - [ ] Testing (la carpeta `tests/` está vacía)
 
@@ -504,8 +540,10 @@ asyncHandler(), forwarding errors to a centralized error middleware.
 | **Puppeteer timeout (login o GPS scraper)** | Aumentar `PUPPETEER_TIMEOUT` en `env/.env`; revisar si el sitio de GPS/Empresa cambió de DOM (ver `SELECTORS` en `constants.js`) |
 | **Usuario ve "⚠️ Tus credenciales de GPS no funcionan" en el menú** | Esperado tras un fallo real de uso (no del setup); pedirle que vuelva a `/app/credenciales` y las recargue |
 | **Una rendición se queda sin kilometraje** | Revisar `CredentialUsageLog` (service GPS) y `Rendicion.gpsRetryCount`. Si llegó a `GPS_MAX_RETRIES`, el job dejó de reintentar sola — hay que revisar el error de fondo (credenciales, patente no encontrada, DOM del GPS cambiado) antes de que sirva reintentar a mano |
-| **No se pudo subir la foto en /app/mantenimiento** | Límite de 10MB (Multer) y solo `image/*`; revisar `PHOTOS_DIR` |
+| **No se pudo subir la factura (mantenimiento o gastos de viaje)** | Límite de 10MB (Multer) y solo `image/*` o `application/pdf` (`receipt-upload.js`); revisar `PHOTOS_DIR` |
 | **Sesión no persiste / redirige siempre a /login** | Revisar `SESSION_SECRET` en `env/.env` (firma la cookie) y que el usuario esté `isActive` |
+| **"No pudimos detectar el monto de la factura automáticamente"** | Esperado si el OCR no encontró un monto plausible o dio baja confianza (`OCR_MIN_CONFIDENCE`) — pedirle al usuario que lo cargue a mano. Si pasa siempre con facturas legibles, revisar `TESSERACT_LANGUAGE` (debe ser `spa`, no `es`) |
+| **El servidor se cae solo al procesar una factura por OCR** | Si volvés a ver esto, probablemente `TESSERACT_LANGUAGE` quedó mal seteado (código ISO en vez de código de tessdata) — el worker de tesseract.js falla al bajar el paquete de idioma con un error que **no pasa por una promesa rechazada**, así que ni `try/catch` ni `asyncHandler` lo agarran; sin `exitOnError: false` en `logger.js` (`src/utils/logger.js`) esto tira abajo TODO el proceso, no solo el request. Ya está mitigado, pero si aparece un crash nuevo de este estilo, sospechar de otra librería con el mismo patrón (emite error por un EventEmitter/Worker en vez de rechazar una promesa) |
 
 ---
 
@@ -519,8 +557,8 @@ El proyecto arrancó planeado como bot de WhatsApp (`whatsapp-web.js`, parser de
 
 - **Desarrollador:** Emanuel Perez
 - **Empresa:** La Segunda (rendición de viáticos)
-- **Estado Actual:** Webapp de formularios funcionando end-to-end sobre PostgreSQL/Prisma: login, credenciales GPS/Empresa cifradas y validadas, vehículo, rendiciones con kilometraje automático (con reintento en background) y gastos de mantenimiento manuales
-- **Próximo paso:** Automatizar la carga en el formulario de la empresa (La Segunda) e integrar OCR para el monto de los comprobantes
+- **Estado Actual:** Webapp de formularios funcionando end-to-end sobre PostgreSQL/Prisma: login, credenciales GPS/Empresa cifradas y validadas, vehículo, rendiciones con kilometraje automático (con reintento en background), gastos de viaje y de mantenimiento con monto asistido por OCR (foto o PDF)
+- **Próximo paso:** Automatizar la carga de todo esto (rendición + gastos) en el formulario de la empresa (La Segunda)
 
 ---
 

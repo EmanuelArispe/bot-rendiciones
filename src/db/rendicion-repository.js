@@ -8,6 +8,10 @@ export function update(id, data) {
   return prisma.rendicion.update({ where: { id }, data })
 }
 
+export function findById(id) {
+  return prisma.rendicion.findUnique({ where: { id } })
+}
+
 export function findByUserId(userId, limit = 10) {
   return prisma.rendicion.findMany({
     where: { userId },

@@ -10,6 +10,7 @@ import authRoutes from './routes/auth-routes.js'
 import menuRoutes from './routes/menu-routes.js'
 import credentialRoutes from './routes/credential-routes.js'
 import rendicionRoutes from './routes/rendicion-routes.js'
+import rendicionGastoRoutes from './routes/rendicion-gasto-routes.js'
 import mantenimientoRoutes from './routes/mantenimiento-routes.js'
 import adminRoutes from './routes/admin-routes.js'
 import profileRoutes from './routes/profile-routes.js'
@@ -32,6 +33,7 @@ export function createServer() {
   app.use('/', menuRoutes)
   app.use('/', credentialRoutes)
   app.use('/', rendicionRoutes)
+  app.use('/', rendicionGastoRoutes)
   app.use('/', mantenimientoRoutes)
   app.use('/', adminRoutes)
   app.use('/', profileRoutes)
